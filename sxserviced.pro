@@ -1,5 +1,6 @@
 TEMPLATE = app
-CONFIG = c++11
+CONFIG -= qt
+CONFIG += c++11
 
 QMAKE_CXXFLAGS += -std=c++14
 QMAKE_CXXFLAGS += -pipe -Os -fno-exceptions -fno-rtti -fno-threadsafe-statics
@@ -8,4 +9,4 @@ QMAKE_CXXFLAGS += -pipe -Os -fno-exceptions -fno-rtti -fno-threadsafe-statics
 #QMAKE_CXXFLAGS += -fno-rtti
 #QMAKE_CXXFLAGS += -fno-threadsafe-statics
 
-SOURCES += main.cpp
+SOURCES = main.cpp
