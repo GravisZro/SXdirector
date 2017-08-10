@@ -1,0 +1,4 @@
+server out    void configUpdated(std::string name);
+server inout {int errcode} unset(std::string key);
+server inout {int errcode} set(std::string key, std::string value);
+server inout {int errcode, std::string value} get(std::string key);

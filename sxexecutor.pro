@@ -3,6 +3,8 @@ CONFIG -= qt
 CONFIG -= c++11
 
 QMAKE_CXXFLAGS += -std=c++14
+DEFINES += ENABLE_PROCESS_EVENT_TRACKING
+//DEFINES += INTERRUPTED_WRAPPER
 #QMAKE_CXXFLAGS += -stdlib=libc++
 #QMAKE_CXXFLAGS += -nodefaultlibs
 #-nostdlib -lc
@@ -42,7 +44,8 @@ SOURCES = main.cpp \
     ../pdtk/process.cpp \
     ../pdtk/socket.cpp \
     ../pdtk/specialized/eventbackend.cpp \
-    ../pdtk/specialized/peercred.cpp
+    ../pdtk/specialized/peercred.cpp \
+    executorconfigclient.cpp
 
 HEADERS += \
     ../pdtk/cxxutils/vfifo.h \
@@ -61,4 +64,6 @@ HEADERS += \
     ../pdtk/specialized/procstat.h \
     ../pdtk/specialized/proclist.h \
     ../pdtk/cxxutils/misc_helpers.h \
-    ../pdtk/cxxutils/pipedfork.h
+    ../pdtk/cxxutils/pipedfork.h \
+    ../pdtk/cxxutils/signal_helpers.h \
+    executorconfigclient.h
