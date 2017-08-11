@@ -8,23 +8,29 @@ ExecutorConfigClient::ExecutorConfigClient(void) noexcept
 
 void ExecutorConfigClient::configUpdated(std::string& name) noexcept
 {
+  (void)name;
 }
 
 void ExecutorConfigClient::unsetReturn(int errcode) noexcept
 {
+  (void)errcode;
 }
 
 void ExecutorConfigClient::setReturn(int errcode) noexcept
 {
+  (void)errcode;
 }
 
 void ExecutorConfigClient::getReturn(int errcode, std::string& value) noexcept
 {
+  (void)errcode;
+  (void)value;
 }
 
 
 void ExecutorConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t fd) noexcept
 {
+  (void)socket;
   (void)fd;
   std::string str;
   if(!(buffer >> str).hadError() && str == "RPC")
