@@ -8,6 +8,7 @@
 #include <process.h>
 #include <socket.h>
 #include <cxxutils/syslogstream.h>
+#include <specialized/capabilities.h>
 
 // project
 #include "executorconfigclient.h"
@@ -27,11 +28,20 @@ int main(int argc, char *argv[]) noexcept
 {
   (void)argc;
   (void)argv;
+
   std::atexit(exiting);
   std::signal(SIGPIPE, SIG_IGN);
-
   posix::syslog.open(appname, posix::facility::daemon);
-  Application app;
+
+#if defined(__linux__)
+  if(::prctl(PR_SET_KEEPCAPS, 1) != posix::success_response)
+  {
+    posix::syslog << posix::priority::error
+                  << "daemon must be launched with the ability to manipulate process capabilities"
+                  << posix::eom;
+    std::exit(int(std::errc::permission_denied));
+  }
+#endif
 
   if((std::strcmp(posix::getgroupname(::getgid()), groupname) && // if current username is NOT what we want AND
       ::setgid(posix::getgroupid(groupname)) == posix::error_response) || // unable to change user id
@@ -46,6 +56,22 @@ int main(int argc, char *argv[]) noexcept
     std::exit(int(std::errc::permission_denied));
   }
 
+#if defined(__linux__)
+  capability_data_t caps;
+
+  if(::capget(caps, caps))
+    fprintf(stderr, "failed to get: %s\n", strerror(errno));
+
+  caps.effective
+      .set(capflag::net_admin)
+      .set(capflag::setuid)
+      .set(capflag::setgid);
+
+  if(::capset(caps, caps) != posix::success_response)
+    fprintf(stderr, "failed to set: %s\n", strerror(errno));
+#endif
+
+  Application app;
   ExecutorConfigClient config;
 
   if(config.connect(config_path))

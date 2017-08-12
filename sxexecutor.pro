@@ -4,7 +4,7 @@ CONFIG -= c++11
 
 QMAKE_CXXFLAGS += -std=c++14
 DEFINES += ENABLE_PROCESS_EVENT_TRACKING
-//DEFINES += INTERRUPTED_WRAPPER
+DEFINES += INTERRUPTED_WRAPPER
 #QMAKE_CXXFLAGS += -stdlib=libc++
 #QMAKE_CXXFLAGS += -nodefaultlibs
 #-nostdlib -lc
@@ -66,4 +66,5 @@ HEADERS += \
     ../pdtk/cxxutils/misc_helpers.h \
     ../pdtk/cxxutils/pipedfork.h \
     ../pdtk/cxxutils/signal_helpers.h \
-    executorconfigclient.h
+    executorconfigclient.h \
+    ../pdtk/specialized/capabilities.h
