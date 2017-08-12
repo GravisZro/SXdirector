@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) noexcept
   std::signal(SIGPIPE, SIG_IGN);
   posix::syslog.open(appname, posix::facility::daemon);
 
-#if defined(__linux__)
+#if defined(_POSIX_DRAFT_1E)
   if(::prctl(PR_SET_KEEPCAPS, 1) != posix::success_response)
   {
     posix::syslog << posix::priority::error
@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) noexcept
     std::exit(int(std::errc::permission_denied));
   }
 
-#if defined(__linux__)
+#if defined(_POSIX_DRAFT_1E)
   capability_data_t caps;
 
   if(::capget(caps, caps))
