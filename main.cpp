@@ -12,12 +12,14 @@
 
 // project
 #include "executorconfigclient.h"
+#include "configclient.h"
 
-constexpr const char* const appname     = "SXexecutor";
-constexpr const char* const username    = "executor";
-constexpr const char* const groupname   = "executor";
-constexpr const char* const socket_path = "/mc/executor/io";
-constexpr const char* const config_path = "/mc/config/executor";
+constexpr const char* const appname       = "SXexecutor";
+constexpr const char* const username      = "executor";
+constexpr const char* const groupname     = "executor";
+constexpr const char* const socket_path   = "/mc/executor/io";
+constexpr const char* const config_path   = "/mc/config/io";
+constexpr const char* const exconfig_path = "/mc/config/executor";
 
 void exiting(void)
 {
@@ -72,15 +74,26 @@ int main(int argc, char *argv[]) noexcept
 #endif
 
   Application app;
-  ExecutorConfigClient config;
+  ConfigClient config;
+  ExecutorConfigClient exconfig;
 
   if(config.connect(config_path))
   {
-    posix::syslog << posix::priority::debug << "Executor connected to " << config_path << posix::eom;
+    posix::syslog << posix::priority::debug << "Connected to " << config_path << posix::eom;
   }
   else
   {
-    posix::syslog << posix::priority::debug << "Executor unable to connected to " << config_path << posix::eom;
+    posix::syslog << posix::priority::debug << "Unable to connected to " << config_path << posix::eom;
+  }
+
+
+  if(exconfig.connect(exconfig_path))
+  {
+    posix::syslog << posix::priority::debug << "Executor connected to " << exconfig_path << posix::eom;
+  }
+  else
+  {
+    posix::syslog << posix::priority::debug << "Executor unable to connected to " << exconfig_path << posix::eom;
   }
 
   return app.exec();

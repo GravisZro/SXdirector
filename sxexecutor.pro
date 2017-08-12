@@ -45,7 +45,8 @@ SOURCES = main.cpp \
     ../pdtk/socket.cpp \
     ../pdtk/specialized/eventbackend.cpp \
     ../pdtk/specialized/peercred.cpp \
-    executorconfigclient.cpp
+    executorconfigclient.cpp \
+    configclient.cpp
 
 HEADERS += \
     ../pdtk/cxxutils/vfifo.h \
@@ -67,4 +68,5 @@ HEADERS += \
     ../pdtk/cxxutils/pipedfork.h \
     ../pdtk/cxxutils/signal_helpers.h \
     executorconfigclient.h \
-    ../pdtk/specialized/capabilities.h
+    ../pdtk/specialized/capabilities.h \
+    configclient.h
