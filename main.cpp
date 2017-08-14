@@ -14,12 +14,15 @@
 #include "executorconfigclient.h"
 #include "configclient.h"
 
-constexpr const char* const appname       = "SXexecutor";
-constexpr const char* const username      = "executor";
-constexpr const char* const groupname     = "executor";
-constexpr const char* const socket_path   = "/mc/executor/io";
-constexpr const char* const config_path   = "/mc/config/io";
-constexpr const char* const exconfig_path = "/mc/config/executor";
+constexpr const char* const progname              = "SXexecutor";
+constexpr const char* const username              = "executor";
+constexpr const char* const groupname             = "executor";
+
+constexpr const char* const this_socket_path      = "/mc/executor/io";
+constexpr const char* const config_socket_path    = "/mc/config/io";
+constexpr const char* const exconfig_socket_path  = "/mc/config/executor";
+
+constexpr const char* const init_config_path      = "/etc/executor";
 
 void exiting(void)
 {
@@ -31,9 +34,14 @@ int main(int argc, char *argv[]) noexcept
   (void)argc;
   (void)argv;
 
+  std::unordered_map<const char*, const char*> defaults =
+  {
+    { "/Config/InitConfigPath", init_config_path },
+  };
+
   std::atexit(exiting);
   std::signal(SIGPIPE, SIG_IGN);
-  posix::syslog.open(appname, posix::facility::daemon);
+  posix::syslog.open(progname, posix::facility::daemon);
 
 #if defined(_POSIX_DRAFT_1E)
   if(::prctl(PR_SET_KEEPCAPS, 1) != posix::success_response)
@@ -77,23 +85,23 @@ int main(int argc, char *argv[]) noexcept
   ConfigClient config;
   ExecutorConfigClient exconfig;
 
-  if(config.connect(config_path))
+  if(config.connect(config_socket_path))
   {
-    posix::syslog << posix::priority::debug << "Connected to " << config_path << posix::eom;
+    posix::syslog << posix::priority::debug << "Connected to " << config_socket_path << posix::eom;
   }
   else
   {
-    posix::syslog << posix::priority::debug << "Unable to connected to " << config_path << posix::eom;
+    posix::syslog << posix::priority::debug << "Unable to connected to " << config_socket_path << posix::eom;
   }
 
 
-  if(exconfig.connect(exconfig_path))
+  if(exconfig.connect(exconfig_socket_path))
   {
-    posix::syslog << posix::priority::debug << "Executor connected to " << exconfig_path << posix::eom;
+    posix::syslog << posix::priority::debug << "Executor connected to " << exconfig_socket_path << posix::eom;
   }
   else
   {
-    posix::syslog << posix::priority::debug << "Executor unable to connected to " << exconfig_path << posix::eom;
+    posix::syslog << posix::priority::debug << "Executor unable to connected to " << exconfig_socket_path << posix::eom;
   }
 
   return app.exec();
