@@ -42,9 +42,7 @@ void ConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t fd) noe
     switch(hash(str))
     {
       case "configUpdated"_hash:
-      {
         configUpdated();
-      }
       break;
       case "unsetReturn"_hash:
       {
