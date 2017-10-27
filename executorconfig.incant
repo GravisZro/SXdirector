@@ -1,4 +1,5 @@
-server out    void configUpdated(std::string name);
+server out   void configUpdated(std::string name);
+server inout {std::list<std::string> names} listConfigs(void);
 server inout {int errcode} unset(std::string key);
 server inout {int errcode} set(std::string key, std::string value);
-server inout {int errcode, std::string value} get(std::string key);
+server inout {int errcode, std::string value, std::list<std::string> children} get(std::string key);
