@@ -1,4 +1,3 @@
-
 #ifndef CONFIGCLIENT_H
 #define CONFIGCLIENT_H
 
@@ -23,10 +22,12 @@ public:
   bool getCall  (const std::string& key                          ) const noexcept { return write(vfifo("RPC", "getCall"  , key       ), posix::invalid_descriptor); }
   bool unsetCall(const std::string& key                          ) const noexcept { return write(vfifo("RPC", "unsetCall", key       ), posix::invalid_descriptor); }
 
-  signal<> configUpdated;
-  signal<posix::error_t /* errcode */> unsetReturn;
-  signal<posix::error_t /* errcode */> setReturn;
-  signal<posix::error_t /* errcode */, std::string& /* value */, std::list<std::string>& /* children */> getReturn;
+  signal<                                      > configUpdated;
+  signal<posix::error_t          /* errcode  */> unsetReturn;
+  signal<posix::error_t          /* errcode  */> setReturn;
+  signal<posix::error_t          /* errcode  */,
+         std::string&            /* value    */,
+         std::list<std::string>& /* children */> getReturn;
 
 private:
   void receive(posix::fd_t socket, vfifo buffer, posix::fd_t fd) noexcept;
