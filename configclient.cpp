@@ -40,7 +40,7 @@ void ConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t fd) noe
       break;
       case "getReturn"_hash:
       {
-        struct { int errcode; std::string value; std::list<std::string> children; } val;
+        struct { int errcode; std::string value; std::vector<std::string> children; } val;
         buffer >> val.errcode >> val.value >> val.children;
         if(!buffer.hadError())
           Object::enqueue(getReturn, val.errcode, val.value, val.children);

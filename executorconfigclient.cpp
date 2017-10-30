@@ -15,6 +15,14 @@ void ExecutorConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t
     buffer >> str;
     switch(hash(str))
     {
+      case "listConfigsReturn"_hash:
+      {
+        struct { std::vector<std::string> names; } val;
+        buffer >> val.names;
+        if(!buffer.hadError())
+          Object::enqueue(listConfigsReturn, val.names);
+      }
+      break;
       case "configUpdated"_hash:
       {
         struct { std::string name; } val;
@@ -41,10 +49,10 @@ void ExecutorConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t
       break;
       case "getReturn"_hash:
       {
-        struct { int errcode; std::string value; } val;
-        buffer >> val.errcode >> val.value;
+        struct { int errcode; std::string value; std::vector<std::string> children; } val;
+        buffer >> val.errcode >> val.value >> val.children;
         if(!buffer.hadError())
-          Object::enqueue(getReturn, val.errcode, val.value);
+          Object::enqueue(getReturn, val.errcode, val.value, val.children);
       }
       break;
     }
