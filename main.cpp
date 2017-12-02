@@ -1,6 +1,7 @@
 // POSIX++
 #include <cstdlib>
 #include <csignal>
+#include <cstdio>
 
 // PDTK
 #include <application.h>
@@ -70,7 +71,7 @@ int main(int argc, char *argv[]) noexcept
   capability_data_t caps;
 
   if(::capget(caps, caps))
-    fprintf(stderr, "failed to get: %s\n", strerror(errno));
+    std::fprintf(stderr, "failed to get: %s\n", strerror(errno));
 
   caps.effective
       .set(capflag::net_admin)
@@ -78,7 +79,7 @@ int main(int argc, char *argv[]) noexcept
       .set(capflag::setgid);
 
   if(::capset(caps, caps) != posix::success_response)
-    fprintf(stderr, "failed to set: %s\n", strerror(errno));
+    std::fprintf(stderr, "failed to set: %s\n", strerror(errno));
 #endif
 
   Application app;
