@@ -1,6 +1,6 @@
 TEMPLATE = app
 CONFIG -= qt
-#CONFIG += c++14
+CONFIG += c++14
 
 # FOR CLANG
 #QMAKE_CXXFLAGS += -stdlib=libc++
