@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) noexcept
   (void)argc;
   (void)argv;
 
-  std::unordered_map<const char*, const char*> defaults =
+  std::unordered_map<const char*, const char*> defaults = // config file default values
   {
     { "/Config/InitConfigPath", init_config_path },
   };
@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) noexcept
   std::signal(SIGPIPE, SIG_IGN);
   posix::syslog.open(progname, posix::facility::daemon);
 
-#if defined(_POSIX_DRAFT_1E)
+#if defined(POSIX_DRAFT_1E)
   if(::prctl(PR_SET_KEEPCAPS, 1) != posix::success_response)
   {
     posix::syslog << posix::priority::error
@@ -67,19 +67,20 @@ int main(int argc, char *argv[]) noexcept
     std::exit(int(std::errc::permission_denied));
   }
 
-#if defined(_POSIX_DRAFT_1E)
+#if defined(POSIX_DRAFT_1E)
   capability_data_t caps;
 
   if(::capget(caps, caps))
-    std::fprintf(stderr, "failed to get: %s\n", strerror(errno));
+    std::fprintf(stderr, "failed to get capabilities: %s\n", std::strerror(errno));
 
   caps.effective
-      .set(capflag::net_admin)
+      .set(capflag::kill) // for killing the processes being supervised
+      .set(capflag::net_admin) // for reading from the Process Event Connector
       .set(capflag::setuid)
       .set(capflag::setgid);
 
   if(::capset(caps, caps) != posix::success_response)
-    std::fprintf(stderr, "failed to set: %s\n", strerror(errno));
+    std::fprintf(stderr, "failed to set capabilities: %s\n", std::strerror(errno));
 #endif
 
   Application app;
