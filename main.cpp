@@ -15,15 +15,42 @@
 #include "executorconfigclient.h"
 #include "configclient.h"
 
-constexpr const char* const progname              = "SXexecutor";
-constexpr const char* const username              = "executor";
-constexpr const char* const groupname             = "executor";
+#ifndef EXECUTOR_APP_NAME
+#define EXECUTOR_APP_NAME       "SXexecutor"
+#endif
 
-constexpr const char* const this_socket_path      = "/mc/executor/io";
-constexpr const char* const config_socket_path    = "/mc/config/io";
-constexpr const char* const exconfig_socket_path  = "/mc/config/executor";
+#ifndef MCFS_PATH
+#define MCFS_PATH               "/mc"
+#endif
 
-constexpr const char* const init_config_path      = "/etc/executor";
+#ifndef EXECUTOR_USERNAME
+#define EXECUTOR_USERNAME       "executor"
+#endif
+
+#ifndef EXECUTOR_GROUPNAME
+#define EXECUTOR_GROUPNAME      EXECUTOR_USERNAME
+#endif
+
+#ifndef CONFIG_USERNAME
+#define CONFIG_USERNAME         "config"
+#endif
+
+#ifndef CONFIG_GROUPNAME
+#define CONFIG_GROUPNAME        CONFIG_USERNAME
+#endif
+
+#ifndef EXECUTOR_IO_SOCKET
+#define EXECUTOR_IO_SOCKET      MCFS_PATH "/" EXECUTOR_USERNAME "/io"
+#endif
+
+#ifndef CONFIG_IO_SOCKET
+#define CONFIG_IO_SOCKET        MCFS_PATH "/" CONFIG_USERNAME "/io"
+#endif
+
+#ifndef CONFIG_EXECUTOR_SOCKET
+#define CONFIG_EXECUTOR_SOCKET  MCFS_PATH "/" CONFIG_USERNAME "/executor"
+#endif
+
 
 void exiting(void)
 {
@@ -37,41 +64,26 @@ int main(int argc, char *argv[]) noexcept
 
   std::unordered_map<const char*, const char*> defaults = // config file default values
   {
-    { "/Config/InitConfigPath", init_config_path },
+    { "/Config/InitConfigPath", "/etc/executor" },
   };
 
   std::atexit(exiting);
   std::signal(SIGPIPE, SIG_IGN);
-  posix::syslog.open(progname, posix::facility::daemon);
+  posix::syslog.open(EXECUTOR_APP_NAME, posix::facility::daemon);
 
 #if defined(POSIX_DRAFT_1E)
   if(::prctl(PR_SET_KEEPCAPS, 1) != posix::success_response)
   {
     posix::syslog << posix::priority::error
-                  << "daemon must be launched with the ability to manipulate process capabilities"
-                  << posix::eom;
-    std::exit(int(std::errc::permission_denied));
-  }
-#endif
-
-  if((std::strcmp(posix::getgroupname(::getgid()), groupname) && // if current username is NOT what we want AND
-      ::setgid(posix::getgroupid(groupname)) == posix::error_response) || // unable to change user id
-     (std::strcmp(posix::getusername(::getuid()), username) && // if current username is NOT what we want AND
-      ::setuid(posix::getuserid (username)) == posix::error_response)) // unable to change user id
-  {
-    posix::syslog << posix::priority::error
-                  << "daemon must be launched as user/group "
-                  << '"' << username << '"'
-                  << " or have permissions to setuid/setgid"
+                  << "Daemon must be launched with the ability to manipulate process capabilities"
                   << posix::eom;
     std::exit(int(std::errc::permission_denied));
   }
 
-#if defined(POSIX_DRAFT_1E)
   capability_data_t caps;
 
   if(::capget(caps, caps))
-    std::fprintf(stderr, "failed to get capabilities: %s\n", std::strerror(errno));
+    posix::syslog << posix::priority::critical << "Failed to get capabilities: " << std::strerror(errno) << posix::eom;
 
   caps.effective
       .set(capflag::kill) // for killing the processes being supervised
@@ -80,30 +92,43 @@ int main(int argc, char *argv[]) noexcept
       .set(capflag::setgid);
 
   if(::capset(caps, caps) != posix::success_response)
-    std::fprintf(stderr, "failed to set capabilities: %s\n", std::strerror(errno));
+    posix::syslog << posix::priority::critical << "Failed to set capabilities: " << std::strerror(errno) << posix::eom;
 #endif
+
+  if((std::strcmp(posix::getgroupname(::getgid()), EXECUTOR_GROUPNAME) && // if current username is NOT what we want AND
+      ::setgid(posix::getgroupid(EXECUTOR_GROUPNAME)) == posix::error_response) || // unable to change user id
+     (std::strcmp(posix::getusername(::getuid()), EXECUTOR_USERNAME) && // if current username is NOT what we want AND
+      ::setuid(posix::getuserid (EXECUTOR_USERNAME)) == posix::error_response)) // unable to change user id
+  {
+    posix::syslog << posix::priority::error
+                  << "Daemon must be launched as user/group "
+                  << '"' << EXECUTOR_USERNAME << '"'
+                  << " or have permissions to setuid/setgid"
+                  << posix::eom;
+    std::exit(int(std::errc::permission_denied));
+  }
 
   Application app;
   ConfigClient config;
   ExecutorConfigClient exconfig;
 
-  if(config.connect(config_socket_path))
+  if(config.connect(CONFIG_IO_SOCKET))
   {
-    posix::syslog << posix::priority::debug << "Connected to " << config_socket_path << posix::eom;
+    posix::syslog << posix::priority::debug << "Connected to " << CONFIG_IO_SOCKET << posix::eom;
   }
   else
   {
-    posix::syslog << posix::priority::debug << "Unable to connected to " << config_socket_path << posix::eom;
+    posix::syslog << posix::priority::debug << "Unable to connected to " << CONFIG_IO_SOCKET << posix::eom;
   }
 
 
-  if(exconfig.connect(exconfig_socket_path))
+  if(exconfig.connect(CONFIG_EXECUTOR_SOCKET))
   {
-    posix::syslog << posix::priority::debug << "Executor connected to " << exconfig_socket_path << posix::eom;
+    posix::syslog << posix::priority::debug << "Executor connected to " << CONFIG_EXECUTOR_SOCKET << posix::eom;
   }
   else
   {
-    posix::syslog << posix::priority::debug << "Executor unable to connected to " << exconfig_socket_path << posix::eom;
+    posix::syslog << posix::priority::debug << "Executor unable to connected to " << CONFIG_EXECUTOR_SOCKET << posix::eom;
   }
 
   return app.exec();
