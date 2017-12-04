@@ -19,7 +19,6 @@ class ExecutorConfigClient : public ClientSocket
 {
 public:
   ExecutorConfigClient(void) noexcept;
-//virtual ~ExecutorConfigClient(void) { }
 
   bool listConfigsCall(void)                                        const noexcept { return write(vfifo("RPC", "listConfigsCall"      ), posix::invalid_descriptor); }
   bool setCall  (const std::string& key, const std::string& value ) const noexcept { return write(vfifo("RPC", "setCall"  , key, value), posix::invalid_descriptor); }
