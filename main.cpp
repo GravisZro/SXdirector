@@ -96,9 +96,9 @@ int main(int argc, char *argv[]) noexcept
 #endif
 
   if((std::strcmp(posix::getgroupname(::getgid()), EXECUTOR_GROUPNAME) && // if current username is NOT what we want AND
-      ::setgid(posix::getgroupid(EXECUTOR_GROUPNAME)) == posix::error_response) || // unable to change user id
+      !posix::setgid(posix::getgroupid(EXECUTOR_GROUPNAME))) || // unable to change user id
      (std::strcmp(posix::getusername(::getuid()), EXECUTOR_USERNAME) && // if current username is NOT what we want AND
-      ::setuid(posix::getuserid (EXECUTOR_USERNAME)) == posix::error_response)) // unable to change user id
+      !posix::setuid(posix::getuserid (EXECUTOR_USERNAME)))) // unable to change user id
   {
     posix::syslog << posix::priority::error
                   << "Daemon must be launched as user/group "
