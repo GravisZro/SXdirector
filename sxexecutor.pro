@@ -36,6 +36,7 @@ SOURCES = main.cpp \
     $$PDTK/application.cpp \
     $$PDTK/process.cpp \
     $$PDTK/socket.cpp \
+    $$PDTK/asyncfd.cpp \
     $$PDTK/cxxutils/configmanip.cpp \
     $$PDTK/specialized/peercred.cpp \
     $$PDTK/specialized/procstat.cpp \
@@ -43,15 +44,17 @@ SOURCES = main.cpp \
     $$PDTK/specialized/eventbackend.cpp \
     $$PDTK/specialized/FileEvent.cpp \
     $$PDTK/specialized/PollEvent.cpp \
-    $$PDTK/specialized/ProcessEvent.cpp
+    $$PDTK/specialized/ProcessEvent.cpp \
+    executorcore.cpp
 
 HEADERS +=  \
     executorconfigclient.h \
     configclient.h\
-    $$PDTK/socket.h \
     $$PDTK/object.h \
     $$PDTK/application.h \
     $$PDTK/process.h \
+    $$PDTK/socket.h \
+    $$PDTK/asyncfd.h \
     $$PDTK/cxxutils/vfifo.h \
     $$PDTK/cxxutils/posix_helpers.h \
     $$PDTK/cxxutils/socket_helpers.h \
@@ -69,4 +72,5 @@ HEADERS +=  \
     $$PDTK/specialized/eventbackend.h \
     $$PDTK/specialized/FileEvent.h \
     $$PDTK/specialized/PollEvent.h \
-    $$PDTK/specialized/ProcessEvent.h
+    $$PDTK/specialized/ProcessEvent.h \
+    executorcore.h

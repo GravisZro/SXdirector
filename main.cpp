@@ -12,8 +12,7 @@
 #include <specialized/capabilities.h>
 
 // project
-#include "executorconfigclient.h"
-#include "configclient.h"
+#include "executorcore.h"
 
 #ifndef EXECUTOR_APP_NAME
 #define EXECUTOR_APP_NAME       "SXexecutor"
@@ -34,23 +33,6 @@
 #ifndef CONFIG_USERNAME
 #define CONFIG_USERNAME         "config"
 #endif
-
-#ifndef CONFIG_GROUPNAME
-#define CONFIG_GROUPNAME        CONFIG_USERNAME
-#endif
-
-#ifndef EXECUTOR_IO_SOCKET
-#define EXECUTOR_IO_SOCKET      MCFS_PATH "/" EXECUTOR_USERNAME "/io"
-#endif
-
-#ifndef CONFIG_IO_SOCKET
-#define CONFIG_IO_SOCKET        MCFS_PATH "/" CONFIG_USERNAME "/io"
-#endif
-
-#ifndef CONFIG_EXECUTOR_SOCKET
-#define CONFIG_EXECUTOR_SOCKET  MCFS_PATH "/" CONFIG_USERNAME "/executor"
-#endif
-
 
 void exiting(void)
 {
@@ -105,31 +87,11 @@ int main(int argc, char *argv[]) noexcept
                   << '"' << EXECUTOR_USERNAME << '"'
                   << " or have permissions to setuid/setgid"
                   << posix::eom;
-    std::exit(int(std::errc::permission_denied));
+    //std::exit(int(std::errc::permission_denied));
   }
 
   Application app;
-  ConfigClient config;
-  ExecutorConfigClient exconfig;
-
-  if(config.connect(CONFIG_IO_SOCKET))
-  {
-    posix::syslog << posix::priority::debug << "Connected to " << CONFIG_IO_SOCKET << posix::eom;
-  }
-  else
-  {
-    posix::syslog << posix::priority::debug << "Unable to connected to " << CONFIG_IO_SOCKET << posix::eom;
-  }
-
-
-  if(exconfig.connect(CONFIG_EXECUTOR_SOCKET))
-  {
-    posix::syslog << posix::priority::debug << "Executor connected to " << CONFIG_EXECUTOR_SOCKET << posix::eom;
-  }
-  else
-  {
-    posix::syslog << posix::priority::debug << "Executor unable to connected to " << CONFIG_EXECUTOR_SOCKET << posix::eom;
-  }
-
+  ExecutorCore core;
+  (void)core;
   return app.exec();
 }
