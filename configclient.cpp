@@ -14,17 +14,30 @@ void ConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t fd) noe
   (void)socket;
   (void)fd;
   std::string str;
-  if(!(buffer >> str).hadError() && str == "RPC")
+  if(!(buffer >> str).hadError() && str == "RPC" &&
+     !(buffer >> str).hadError())
   {
-    buffer >> str;
     switch(hash(str))
     {
-      case "configUpdated"_hash:
-        Object::enqueue(configUpdated);
+      case "fullUpdateReturn"_hash:
+      {
+        struct { posix::error_t errcode; } val;
+        buffer >> val.errcode;
+        if(!buffer.hadError())
+          Object::enqueue(fullUpdateReturn, val.errcode);
+      }
+      break;
+      case "valueUpdate"_hash:
+      {
+        struct { std::string name; std::string value; } val;
+        buffer >> val.name >> val.value;
+        if(!buffer.hadError())
+          Object::enqueue(valueUpdate, val.name, val.value);
+      }
       break;
       case "unsetReturn"_hash:
       {
-        struct { int errcode; } val;
+        struct { posix::error_t errcode; } val;
         buffer >> val.errcode;
         if(!buffer.hadError())
           Object::enqueue(unsetReturn, val.errcode);
@@ -32,7 +45,7 @@ void ConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t fd) noe
       break;
       case "setReturn"_hash:
       {
-        struct { int errcode; } val;
+        struct { posix::error_t errcode; } val;
         buffer >> val.errcode;
         if(!buffer.hadError())
           Object::enqueue(setReturn, val.errcode);
@@ -40,7 +53,7 @@ void ConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t fd) noe
       break;
       case "getReturn"_hash:
       {
-        struct { int errcode; std::string value; std::vector<std::string> children; } val;
+        struct { posix::error_t errcode; std::string value; std::vector<std::string> children; } val;
         buffer >> val.errcode >> val.value >> val.children;
         if(!buffer.hadError())
           Object::enqueue(getReturn, val.errcode, val.value, val.children);

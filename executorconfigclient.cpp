@@ -10,9 +10,9 @@ void ExecutorConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t
   (void)socket;
   (void)fd;
   std::string str;
-  if(!(buffer >> str).hadError() && str == "RPC")
+  if(!(buffer >> str).hadError() && str == "RPC" &&
+     !(buffer >> str).hadError())
   {
-    buffer >> str;
     switch(hash(str))
     {
       case "listConfigsReturn"_hash:
@@ -23,17 +23,25 @@ void ExecutorConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t
           Object::enqueue(listConfigsReturn, val.names);
       }
       break;
-      case "configUpdated"_hash:
+      case "fullUpdateReturn"_hash:
       {
-        struct { std::string name; } val;
-        buffer >> val.name;
+        struct { posix::error_t errcode; } val;
+        buffer >> val.errcode;
         if(!buffer.hadError())
-          Object::enqueue(configUpdated, val.name);
+          Object::enqueue(fullUpdateReturn, val.errcode);
+      }
+      break;
+      case "valueUpdate"_hash:
+      {
+        struct { std::string name; std::string value; } val;
+        buffer >> val.name >> val.value;
+        if(!buffer.hadError())
+          Object::enqueue(valueUpdate, val.name, val.value);
       }
       break;
       case "unsetReturn"_hash:
       {
-        struct { int errcode; } val;
+        struct { posix::error_t errcode; } val;
         buffer >> val.errcode;
         if(!buffer.hadError())
           Object::enqueue(unsetReturn, val.errcode);
@@ -41,7 +49,7 @@ void ExecutorConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t
       break;
       case "setReturn"_hash:
       {
-        struct { int errcode; } val;
+        struct { posix::error_t errcode; } val;
         buffer >> val.errcode;
         if(!buffer.hadError())
           Object::enqueue(setReturn, val.errcode);
@@ -49,10 +57,10 @@ void ExecutorConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t
       break;
       case "getReturn"_hash:
       {
-        struct { int errcode; std::string value; std::vector<std::string> children; } val;
-        buffer >> val.errcode >> val.value >> val.children;
+        struct { posix::error_t errcode; std::string value; std::vector<std::string> childlist; } val;
+        buffer >> val.errcode >> val.value >> val.childlist;
         if(!buffer.hadError())
-          Object::enqueue(getReturn, val.errcode, val.value, val.children);
+          Object::enqueue(getReturn, val.errcode, val.value, val.childlist);
       }
       break;
     }

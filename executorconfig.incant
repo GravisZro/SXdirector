@@ -1,5 +1,6 @@
-server out   void configUpdated(std::string name);
+server out   void valueUpdate(std::string name, std::string value);
+server inout {posix::error_t errcode} fullUpdate(void);
 server inout {std::list<std::string> names} listConfigs(void);
-server inout {int errcode} unset(std::string key);
-server inout {int errcode} set(std::string key, std::string value);
-server inout {int errcode, std::string value, std::list<std::string> children} get(std::string key);
+server inout {posix::error_t errcode} unset(std::string key);
+server inout {posix::error_t errcode} set(std::string key, std::string value);
+server inout {posix::error_t errcode, std::string value, std::list<std::string> children} get(std::string key);
