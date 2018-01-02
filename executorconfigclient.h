@@ -28,8 +28,9 @@ public:
 
   signal<std::vector<std::string> /* names    */> listConfigsReturn;
   signal<posix::error_t           /* errcode  */> fullUpdateReturn;
-  signal<std::string              /* name     */,
+  signal<std::string              /* key      */,
          std::string              /* value    */> valueUpdate;
+  signal<std::string              /* key      */> valueUnset;
   signal<posix::error_t           /* errcode  */> unsetReturn;
   signal<posix::error_t           /* errcode  */> setReturn;
   signal<posix::error_t           /* errcode  */,

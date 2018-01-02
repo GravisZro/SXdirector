@@ -29,10 +29,18 @@ void ConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t fd) noe
       break;
       case "valueUpdate"_hash:
       {
-        struct { std::string name; std::string value; } val;
-        buffer >> val.name >> val.value;
+        struct { std::string key; std::string value; } val;
+        buffer >> val.key >> val.value;
         if(!buffer.hadError())
-          Object::enqueue(valueUpdate, val.name, val.value);
+          Object::enqueue(valueUpdate, val.key, val.value);
+      }
+      break;
+      case "valueUnset"_hash:
+      {
+        struct { std::string key; } val;
+        buffer >> val.key;
+        if(!buffer.hadError())
+          Object::enqueue(valueUnset, val.key);
       }
       break;
       case "unsetReturn"_hash:

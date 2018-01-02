@@ -23,10 +23,10 @@ public:
   bool getCall  (const std::string& key                          ) const noexcept { return write(vfifo("RPC", "getCall"  , key       ), posix::invalid_descriptor); }
   bool unsetCall(const std::string& key                          ) const noexcept { return write(vfifo("RPC", "unsetCall", key       ), posix::invalid_descriptor); }
 
-
   signal<posix::error_t           /* errcode  */> fullUpdateReturn;
-  signal<std::string              /* name     */,
+  signal<std::string              /* key      */,
          std::string              /* value    */> valueUpdate;
+  signal<std::string              /* key      */> valueUnset;
   signal<posix::error_t           /* errcode  */> unsetReturn;
   signal<posix::error_t           /* errcode  */> setReturn;
   signal<posix::error_t           /* errcode  */,

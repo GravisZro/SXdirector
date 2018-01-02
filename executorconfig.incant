@@ -1,4 +1,5 @@
-server out   void valueUpdate(std::string name, std::string value);
+server out   void valueUpdate(std::string key, std::string value);
+server out   void valueUnset(std::string key);
 server inout {posix::error_t errcode} fullUpdate(void);
 server inout {std::list<std::string> names} listConfigs(void);
 server inout {posix::error_t errcode} unset(std::string key);
