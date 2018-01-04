@@ -22,18 +22,31 @@ public:
 
   bool listConfigsCall(void)                                        const noexcept { return write(vfifo("RPC", "listConfigsCall"      ), posix::invalid_descriptor); }
   bool fullUpdateCall (void)                                        const noexcept { return write(vfifo("RPC", "fullUpdateCall"       ), posix::invalid_descriptor); }
-  bool setCall  (const std::string& key, const std::string& value ) const noexcept { return write(vfifo("RPC", "setCall"  , key, value), posix::invalid_descriptor); }
-  bool getCall  (const std::string& key                           ) const noexcept { return write(vfifo("RPC", "getCall"  , key       ), posix::invalid_descriptor); }
-  bool unsetCall(const std::string& key                           ) const noexcept { return write(vfifo("RPC", "unsetCall", key       ), posix::invalid_descriptor); }
+  bool setCall  (const std::string& config, const std::string& key, const std::string& value ) const noexcept { return write(vfifo("RPC", "setCall"  , config, key, value), posix::invalid_descriptor); }
+  bool getCall  (const std::string& config, const std::string& key                           ) const noexcept { return write(vfifo("RPC", "getCall"  , config, key       ), posix::invalid_descriptor); }
+  bool unsetCall(const std::string& config, const std::string& key                           ) const noexcept { return write(vfifo("RPC", "unsetCall", config, key       ), posix::invalid_descriptor); }
 
   signal<std::vector<std::string> /* names    */> listConfigsReturn;
   signal<posix::error_t           /* errcode  */> fullUpdateReturn;
-  signal<std::string              /* key      */,
+
+  signal<std::string              /* config   */,
+         std::string              /* key      */,
          std::string              /* value    */> valueUpdate;
-  signal<std::string              /* key      */> valueUnset;
-  signal<posix::error_t           /* errcode  */> unsetReturn;
-  signal<posix::error_t           /* errcode  */> setReturn;
+
+  signal<std::string              /* config   */,
+         std::string              /* key      */> valueUnset;
+
   signal<posix::error_t           /* errcode  */,
+         std::string              /* config   */,
+         std::string              /* key      */> unsetReturn;
+
+  signal<posix::error_t           /* errcode  */,
+         std::string              /* config   */,
+         std::string              /* key      */> setReturn;
+
+  signal<posix::error_t           /* errcode  */,
+         std::string              /* config   */,
+         std::string              /* key      */,
          std::string              /* value    */,
          std::vector<std::string> /* children */> getReturn;
 
