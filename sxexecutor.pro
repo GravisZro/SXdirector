@@ -31,6 +31,7 @@ PDTK = ../pdtk
 INCLUDEPATH += $$PDTK
 
 SOURCES = main.cpp \
+    executorcore.cpp \
     executorconfigclient.cpp \
     configclient.cpp \
     $$PDTK/application.cpp \
@@ -44,10 +45,10 @@ SOURCES = main.cpp \
     $$PDTK/specialized/eventbackend.cpp \
     $$PDTK/specialized/FileEvent.cpp \
     $$PDTK/specialized/PollEvent.cpp \
-    $$PDTK/specialized/ProcessEvent.cpp \
-    executorcore.cpp
+    $$PDTK/specialized/ProcessEvent.cpp
 
 HEADERS +=  \
+    executorcore.h \
     executorconfigclient.h \
     configclient.h\
     $$PDTK/object.h \
@@ -72,5 +73,4 @@ HEADERS +=  \
     $$PDTK/specialized/eventbackend.h \
     $$PDTK/specialized/FileEvent.h \
     $$PDTK/specialized/PollEvent.h \
-    $$PDTK/specialized/ProcessEvent.h \
-    executorcore.h
+    $$PDTK/specialized/ProcessEvent.h

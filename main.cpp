@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) noexcept
                   << '"' << EXECUTOR_USERNAME << '"'
                   << " or have permissions to setuid/setgid"
                   << posix::eom;
-    //std::exit(int(std::errc::permission_denied));
+    //std::exit(posix::error_t(std::errc::permission_denied));
   }
 
   Application app;
