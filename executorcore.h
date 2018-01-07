@@ -22,9 +22,6 @@ public:
 private:
   ConfigClient m_config_client;
   ExecutorConfigClient m_executor_client;
-
-  ConfigManip m_executor_config;
-  std::unordered_map<std::string, ConfigManip> m_configfiles;
 };
 
 #endif // EXECUTORCORE_H

@@ -1,6 +1,6 @@
-server out   void valueUpdate(std::string key, std::string value);
+server out   void valueSet(std::string key, std::string value);
 server out   void valueUnset(std::string key);
-server inout {posix::error_t errcode} fullUpdate(void);
+server inout {posix::error_t errcode} sync(void);
 server inout {posix::error_t errcode} unset(std::string key);
 server inout {posix::error_t errcode} set(std::string key, std::string value);
 server inout {posix::error_t errcode, std::string value, std::list<std::string> children} get(std::string key);

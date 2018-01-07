@@ -1,18 +1,14 @@
 #ifndef EXECUTORCONFIGCLIENT_H
 #define EXECUTORCONFIGCLIENT_H
 
-// POSIX
-#include <sys/types.h>
-
 // STL
+#include <atomic>
 #include <vector>
-#include <cstdint>
+#include <string>
 
 // PDTK
-#include <object.h>
 #include <socket.h>
 #include <cxxutils/vfifo.h>
-#include <cxxutils/hashing.h>
 #include <cxxutils/posix_helpers.h>
 
 class ExecutorConfigClient : public ClientSocket
@@ -20,38 +16,20 @@ class ExecutorConfigClient : public ClientSocket
 public:
   ExecutorConfigClient(void) noexcept;
 
-  bool listConfigsCall(void)                                        const noexcept { return write(vfifo("RPC", "listConfigsCall"      ), posix::invalid_descriptor); }
-  bool fullUpdateCall (void)                                        const noexcept { return write(vfifo("RPC", "fullUpdateCall"       ), posix::invalid_descriptor); }
-  bool setCall  (const std::string& config, const std::string& key, const std::string& value ) const noexcept { return write(vfifo("RPC", "setCall"  , config, key, value), posix::invalid_descriptor); }
-  bool getCall  (const std::string& config, const std::string& key                           ) const noexcept { return write(vfifo("RPC", "getCall"  , config, key       ), posix::invalid_descriptor); }
-  bool unsetCall(const std::string& config, const std::string& key                           ) const noexcept { return write(vfifo("RPC", "unsetCall", config, key       ), posix::invalid_descriptor); }
+  std::list<std::string> listConfigs(void) const noexcept;
+  const std::string& get(const std::string& config, const std::string& key) const noexcept;
+  void set  (const std::string& config, const std::string& key, const std::string& value) noexcept;
+  void unset(const std::string& config, const std::string& key) noexcept;
 
-  signal<std::vector<std::string> /* names    */> listConfigsReturn;
-  signal<posix::error_t           /* errcode  */> fullUpdateReturn;
-
-  signal<std::string              /* config   */,
-         std::string              /* key      */,
-         std::string              /* value    */> valueUpdate;
-
-  signal<std::string              /* config   */,
-         std::string              /* key      */> valueUnset;
-
-  signal<posix::error_t           /* errcode  */,
-         std::string              /* config   */,
-         std::string              /* key      */> unsetReturn;
-
-  signal<posix::error_t           /* errcode  */,
-         std::string              /* config   */,
-         std::string              /* key      */> setReturn;
-
-  signal<posix::error_t           /* errcode  */,
-         std::string              /* config   */,
-         std::string              /* key      */,
-         std::string              /* value    */,
-         std::vector<std::string> /* children */> getReturn;
-
+  bool isSynchronized(void) const noexcept { return m_sync; }
 private:
+  void resync(posix::error_t errcode) noexcept;
   void receive(posix::fd_t socket, vfifo buffer, posix::fd_t fd) noexcept;
+  void valueSet(const std::string& config, const std::string& key, const std::string& value) noexcept;
+  void valueUnset(const std::string& config, const std::string& key) noexcept;
+
+  std::unordered_map<std::string, std::unordered_map<std::string, std::string>> m_data;
+  std::atomic_bool m_sync;
 };
 
 #endif
