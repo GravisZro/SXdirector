@@ -29,10 +29,6 @@
 #define EXECUTOR_IO_SOCKET      MCFS_PATH "/" EXECUTOR_USERNAME "/io"
 #endif
 
-#ifndef CONFIG_EXECUTOR_SOCKET
-#define CONFIG_EXECUTOR_SOCKET  MCFS_PATH "/" CONFIG_USERNAME "/executor"
-#endif
-
 #ifndef EXECUTOR_CONFIG_PATH
 #define EXECUTOR_CONFIG_PATH  "/etc/executor"
 #endif
@@ -82,6 +78,7 @@ static bool readconfig(const char* name, std::string& buffer)
 ExecutorConfigClient::ExecutorConfigClient(void) noexcept
 {
   Object::connect(newMessage, this, &ExecutorConfigClient::receive);
+  resync(posix::success_response);
 }
 
 
