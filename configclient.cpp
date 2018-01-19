@@ -65,9 +65,10 @@ static bool readconfig(const char* name, std::string& buffer) noexcept
 #endif
 
 ConfigClient::ConfigClient(void) noexcept
+  : m_sync(false)
 {
   Object::connect(newMessage, this, &ConfigClient::receive);
-  resync(posix::success_response);
+  Object::singleShot(this, &ConfigClient::resync, errno = posix::success_response);
 }
 
 void ConfigClient::resync(posix::error_t errcode) noexcept
@@ -80,7 +81,7 @@ void ConfigClient::resync(posix::error_t errcode) noexcept
   bool socket_file = use_socket_file(CONFIG_IO_SOCKET);
 
   bool try_connecting = true;
-  if(errcode != posix::success_response)
+  if(errcode != posix::success_response) // if not the first connection attempt
   {
     // connection counter stuff here
   }
@@ -182,7 +183,10 @@ void ConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t fd) noe
         if(buffer.hadError() || errcode != posix::success_response)
           Object::singleShot(this, &ConfigClient::resync, errcode);
         else if(errcode == posix::success_response)
+        {
           m_sync = true;
+          Object::enqueue(synchronized);
+        }
       }
       break;
       case "valueSet"_hash:

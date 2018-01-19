@@ -22,6 +22,7 @@ public:
   void unset(const std::string& config, const std::string& key) noexcept;
 
   bool isSynchronized(void) const noexcept { return m_sync; }
+  signal<> synchronized;
 private:
   void resync(posix::error_t errcode) noexcept;
   void receive(posix::fd_t socket, vfifo buffer, posix::fd_t fd) noexcept;
