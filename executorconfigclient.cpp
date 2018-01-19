@@ -147,6 +147,7 @@ void ExecutorConfigClient::resync(posix::error_t errcode) noexcept
           tmp_config.exportKeyPairs(m_data[base]);
       }
       m_sync = true;
+      Object::enqueue(synchronized);
     }
 #endif
   }

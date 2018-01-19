@@ -121,6 +121,7 @@ void ConfigClient::resync(posix::error_t errcode) noexcept
     {
       tmp_config.exportKeyPairs(m_data);
       m_sync = true;
+      Object::enqueue(synchronized);
     }
 #endif
   }
