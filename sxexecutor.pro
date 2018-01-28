@@ -34,6 +34,7 @@ SOURCES = main.cpp \
     executorcore.cpp \
     executorconfigclient.cpp \
     configclient.cpp \
+    jobcontroller.cpp \
     $$PDTK/application.cpp \
     $$PDTK/process.cpp \
     $$PDTK/socket.cpp \
@@ -50,7 +51,8 @@ SOURCES = main.cpp \
 HEADERS +=  \
     executorcore.h \
     executorconfigclient.h \
-    configclient.h\
+    configclient.h \
+    jobcontroller.h \
     $$PDTK/object.h \
     $$PDTK/application.h \
     $$PDTK/process.h \
