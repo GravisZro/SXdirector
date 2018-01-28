@@ -82,7 +82,6 @@ ExecutorConfigClient::ExecutorConfigClient(void) noexcept
   Object::singleShot(this, &ExecutorConfigClient::resync, errno = posix::success_response);
 }
 
-
 void ExecutorConfigClient::resync(posix::error_t errcode) noexcept
 {
   m_data.clear();
