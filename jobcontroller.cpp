@@ -16,12 +16,12 @@ struct JobController::node_t
     : proc(pid, ProcessEvent::Fork | ProcessEvent::Exit), parent(_parent)
   {
     Object::connect(proc.forked,
-                    std::function<void(pid_t, pid_t) noexcept>
-                      ([this](pid_t _parent, pid_t _child) { add(_parent, _child); }));
+                    Object::fslot_t<void, pid_t, pid_t>
+                      ([this](pid_t _parent, pid_t _child) noexcept { add(_parent, _child); }));
 
     Object::connect(proc.exited,
-                    std::function<void(pid_t, posix::error_t) noexcept>
-                      ([this](pid_t _pid, posix::error_t) { remove(_pid); }));
+                    Object::fslot_t<void, pid_t, pid_t>
+                      ([this](pid_t _pid, posix::error_t) noexcept { remove(_pid); }));
   }
 
   void add(pid_t parent_pid, pid_t child_pid)
