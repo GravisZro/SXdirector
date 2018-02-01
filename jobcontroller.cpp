@@ -19,8 +19,13 @@ void JobController::remove(pid_t pid, posix::error_t exit_code) noexcept
   auto iter = m_pids.begin();
   while(iter != m_pids.end())
   {
-    if(iter->first == pid || iter->second == pid) // if parent or child matches
-      iter = m_pids.erase(iter);
+    if(iter->second == pid) // if child matches
+      iter = m_pids.erase(iter); // erase entry for parent and child
+    else if(iter->first == pid) // if parent matches
+    {
+      m_pids.emplace_front(0, iter->second); // reparent to preserve child
+      iter = m_pids.erase(iter); // erase entry
+    }
     else
       ++iter;
   }
