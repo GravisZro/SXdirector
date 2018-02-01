@@ -30,7 +30,7 @@
 #endif
 
 #ifndef EXECUTOR_CONFIG_FILE
-#define EXECUTOR_CONFIG_FILE    "executor"
+#define EXECUTOR_CONFIG_FILE    "executor.conf"
 #endif
 
 
@@ -43,7 +43,7 @@
 
 static bool readconfig(const char* name, std::string& buffer) noexcept
 {
-  std::FILE* file = std::fopen(name, "a+b");
+  std::FILE* file = std::fopen(name, "rb");
 
   if(file == nullptr)
   {

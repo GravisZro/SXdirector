@@ -55,7 +55,7 @@ static const char* executor_configfilename(const char* base)
 
 static bool readconfig(const char* name, std::string& buffer)
 {
-  std::FILE* file = std::fopen(name, "a+b");
+  std::FILE* file = std::fopen(name, "rb");
 
   if(file == nullptr)
   {
@@ -131,19 +131,22 @@ void ExecutorConfigClient::resync(posix::error_t errcode) noexcept
     {
       while((entry = ::readdir(dir)) != nullptr)
       {
+        if(entry->d_name[0] == '.') // skip dot files/dirs
+          continue;
+
         tmp_config.clear();
-        if(!readconfig(executor_configfilename(base), buffer))
+        if(!readconfig(executor_configfilename(entry->d_name), buffer))
         {
-          posix::syslog << posix::priority::critical << "Unable to read Executor daemon configuation file: " << executor_configfilename(base) << ": " << std::strerror(errno) << posix::eom;
+          posix::syslog << posix::priority::critical << "Unable to read Executor daemon configuation file: " << executor_configfilename(entry->d_name) << ": " << std::strerror(errno) << posix::eom;
           Application::quit(UNABLE_TO_READ_CONFIGURATION);
         }
         else if(!tmp_config.importText(buffer))
         {
-          posix::syslog << posix::priority::critical << "Parsing failed will processing Executor daemon configuation file: " << executor_configfilename(base) << posix::eom;
+          posix::syslog << posix::priority::critical << "Parsing failed will processing Executor daemon configuation file: " << executor_configfilename(entry->d_name) << posix::eom;
           Application::quit(UNABLE_TO_PARSE_CONFIGURATION);
         }
         else // no errors! :)
-          tmp_config.exportKeyPairs(m_data[base]);
+          tmp_config.exportKeyPairs(m_data[entry->d_name]);
       }
       m_sync = true;
       Object::enqueue(synchronized);
