@@ -18,20 +18,12 @@
 #define EXECUTOR_APP_NAME       "SXexecutor"
 #endif
 
-#ifndef MCFS_PATH
-#define MCFS_PATH               "/mc"
-#endif
-
 #ifndef EXECUTOR_USERNAME
 #define EXECUTOR_USERNAME       "executor"
 #endif
 
 #ifndef EXECUTOR_GROUPNAME
 #define EXECUTOR_GROUPNAME      EXECUTOR_USERNAME
-#endif
-
-#ifndef CONFIG_USERNAME
-#define CONFIG_USERNAME         "config"
 #endif
 
 void exiting(void)
@@ -41,16 +33,7 @@ void exiting(void)
 
 int main(int argc, char *argv[]) noexcept
 {
-  (void)argc;
-  (void)argv;
-
-  std::unordered_map<const char*, const char*> defaults = // config file default values
-  {
-    { "/Config/InitConfigPath", "/etc/executor" },
-  };
-
   std::atexit(exiting);
-  std::signal(SIGPIPE, SIG_IGN);
   posix::syslog.open(EXECUTOR_APP_NAME, posix::facility::daemon);
 
 #if defined(POSIX_DRAFT_1E)
@@ -87,11 +70,18 @@ int main(int argc, char *argv[]) noexcept
                   << '"' << EXECUTOR_USERNAME << '"'
                   << " or have permissions to setuid/setgid"
                   << posix::eom;
-    //std::exit(posix::error_t(std::errc::permission_denied));
+    std::exit(posix::error_t(std::errc::permission_denied));
   }
 
   Application app;
-  ExecutorCore core;
-  (void)core;
+  std::signal(SIGPIPE, SIG_IGN);
+  std::signal(SIGINT, [](int){ Application::quit(0); });
+
+  posix::fd_t shmemid = posix::invalid_descriptor;
+  if(argc > 1 && std::atoi(argv[1]))
+    shmemid = std::atoi(argv[1]);
+  ExecutorCore core(shmemid);
+  core.reloadSettings();
+
   return app.exec();
 }

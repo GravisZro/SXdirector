@@ -7,11 +7,9 @@
 
 // PDTK
 #include <object.h>
-#include <process.h>
-#include <cxxutils/configmanip.h>
-#include <specialized/ProcessEvent.h>
 
 // project
+#include "jobcontroller.h"
 #include "configclient.h"
 #include "executorconfigclient.h"
 
@@ -21,9 +19,10 @@ public:
   ExecutorCore(posix::fd_t shmemid = posix::invalid_descriptor) noexcept; // take shared memory identifier from previous instance
  ~ExecutorCore(void) noexcept;
 
+  void reloadSettings(void) noexcept;
 private:
-  void reload(void) noexcept;
-  std::unordered_map<std::string, Process*> m_process_map; // indexed by config name
+  void reloadBinary  (void) noexcept;
+  std::unordered_map<std::string, JobController> m_process_map; // indexed by config name
   ConfigClient m_config_client;
   ExecutorConfigClient m_executor_client;
 };
