@@ -1,13 +1,9 @@
 // POSIX++
-#include <cstdlib>
-#include <csignal>
-#include <cstdio>
+#include <cstdlib> // for std::atexit
+#include <csignal> // for std::signal
 
 // PDTK
 #include <application.h>
-#include <object.h>
-#include <process.h>
-#include <socket.h>
 #include <cxxutils/syslogstream.h>
 #include <specialized/capabilities.h>
 
@@ -75,7 +71,7 @@ int main(int argc, char *argv[]) noexcept
 
   Application app;
   std::signal(SIGPIPE, SIG_IGN);
-  std::signal(SIGINT, [](int){ Application::quit(0); });
+  std::signal(SIGINT, [](int){ Application::quit(0); }); // exit gracefully
 
   posix::fd_t shmemid = posix::invalid_descriptor;
   if(argc > 1 && std::atoi(argv[1]))
