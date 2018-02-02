@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) noexcept
   if(argc > 1 && std::atoi(argv[1]))
     shmemid = std::atoi(argv[1]);
   ExecutorCore core(shmemid);
-  core.reloadSettings();
+  (void)core;
 
   return app.exec();
 }

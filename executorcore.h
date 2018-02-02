@@ -19,9 +19,9 @@ public:
   ExecutorCore(posix::fd_t shmemid = posix::invalid_descriptor) noexcept; // take shared memory identifier from previous instance
  ~ExecutorCore(void) noexcept;
 
-  void reloadSettings(void) noexcept;
 private:
   void reloadBinary  (void) noexcept;
+  void reloadSettings(void) noexcept;
   std::unordered_map<std::string, JobController> m_process_map; // indexed by config name
   ConfigClient m_config_client;
   ExecutorConfigClient m_executor_client;
