@@ -2,6 +2,7 @@
 
 // POSIX++
 #include <climits>
+#include <cstdio>
 
 // PDTK
 #include <object.h>
@@ -43,14 +44,29 @@
 #include <dirent.h>
 #include <cxxutils/configmanip.h>
 
-static const char* executor_configfilename(const char* base)
+
+static const char* extract_daemon_name(const char* filename)
+{
+  char daemon[NAME_MAX];
+  const char* start = std::strrchr(filename, '/');
+  const char* end   = std::strrchr(filename, '.');
+
+  if(start == nullptr || // if '/' NOT found OR
+     end   == nullptr || // '.' found AND
+     end < start || // occur in the incorrect order OR
+     std::strcmp(end, ".conf")) // doesn't end with ".conf"
+    return nullptr;
+  return std::strncpy(daemon, start + 1, posix::size_t(end - start + 1)); // extract daemon name
+}
+
+static const char* executor_configfilename(const char* filename)
 {
   // construct config filename
-  static char name[PATH_MAX];
-  std::memset(name, 0, PATH_MAX);
-  if(std::snprintf(name, PATH_MAX, "%s/%s.conf", EXECUTOR_CONFIG_PATH, base) == posix::error_response) // I don't how this could fail
+  static char fullpath[PATH_MAX];
+  std::memset(fullpath, 0, PATH_MAX);
+  if(std::snprintf(fullpath, PATH_MAX, "%s/%s", EXECUTOR_CONFIG_PATH, filename) == posix::error_response) // I don't how this could fail
     return nullptr; // unable to build config filename
-  return name;
+  return fullpath;
 }
 
 static bool readconfig(const char* name, std::string& buffer)
@@ -116,12 +132,10 @@ void ExecutorConfigClient::resync(posix::error_t errcode) noexcept
 #else
     posix::syslog << posix::priority::warning << "Continuing without configuration daemon connection for Executor.  Falling back on direct file access." << posix::eom;
 
-    std::string buffer;
-    ConfigManip tmp_config;
-
     DIR* dir = ::opendir(EXECUTOR_CONFIG_PATH);
     dirent* entry = nullptr;
-    char base[NAME_MAX];
+    const char* daemon = nullptr;
+    const char* filename = nullptr;
     if(dir == nullptr)
     {
       posix::syslog << posix::priority::critical << "Unable to read directory of Executor configuation files: " << EXECUTOR_CONFIG_PATH << posix::eom;
@@ -129,24 +143,33 @@ void ExecutorConfigClient::resync(posix::error_t errcode) noexcept
     }
     else
     {
+      std::string buffer;
+      ConfigManip tmp_config;
+
       while((entry = ::readdir(dir)) != nullptr)
       {
         if(entry->d_name[0] == '.') // skip dot files/dirs
           continue;
 
+        if((daemon   = extract_daemon_name    (entry->d_name)) == nullptr || // if daemon name extraction failed OR
+           (filename = executor_configfilename(entry->d_name)) == nullptr) // failed to build filename
+          continue; // skip file
+
         tmp_config.clear();
-        if(!readconfig(executor_configfilename(entry->d_name), buffer))
+        if(!readconfig(filename, buffer))
         {
-          posix::syslog << posix::priority::critical << "Unable to read Executor daemon configuation file: " << executor_configfilename(entry->d_name) << ": " << std::strerror(errno) << posix::eom;
+          posix::syslog << posix::priority::critical << "Unable to read Executor daemon configuation file: " << filename << ": " << std::strerror(errno) << posix::eom;
           Application::quit(UNABLE_TO_READ_CONFIGURATION);
         }
         else if(!tmp_config.importText(buffer))
         {
-          posix::syslog << posix::priority::critical << "Parsing failed will processing Executor daemon configuation file: " << executor_configfilename(entry->d_name) << posix::eom;
+          posix::syslog << posix::priority::critical << "Parsing failed will processing Executor daemon configuation file: " << filename << posix::eom;
           Application::quit(UNABLE_TO_PARSE_CONFIGURATION);
         }
         else // no errors! :)
-          tmp_config.exportKeyPairs(m_data[entry->d_name]);
+        {
+          tmp_config.exportKeyPairs(m_data[daemon]);
+        }
       }
       m_sync = true;
       Object::enqueue(synchronized);
