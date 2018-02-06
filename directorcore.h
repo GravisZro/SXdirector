@@ -1,5 +1,5 @@
-#ifndef EXECUTORCORE_H
-#define EXECUTORCORE_H
+#ifndef DIRECTORCORE_H
+#define DIRECTORCORE_H
 
 // STL
 #include <string>
@@ -15,15 +15,15 @@
 // project
 #include "jobcontroller.h"
 #include "configclient.h"
-#include "executorconfigclient.h"
+#include "directorconfigclient.h"
 
 
 
-class ExecutorCore : public Object
+class DirectorCore : public Object
 {
 public:
-  ExecutorCore(posix::fd_t shmemid = posix::invalid_descriptor) noexcept; // take shared memory identifier from previous instance
- ~ExecutorCore(void) noexcept;
+  DirectorCore(posix::fd_t shmemid = posix::invalid_descriptor) noexcept; // take shared memory identifier from previous instance
+ ~DirectorCore(void) noexcept;
 
   void reloadBinary  (void) noexcept;
   void reloadSettings(void) noexcept;
@@ -46,7 +46,7 @@ private:
 
   std::unordered_map<std::string, JobController> m_process_map; // indexed by daemon name
   ConfigClient m_config_client;
-  ExecutorConfigClient m_executor_client;
+  DirectorConfigClient m_director_client;
 };
 
-#endif // EXECUTORCORE_H
+#endif // DIRECTORCORE_H

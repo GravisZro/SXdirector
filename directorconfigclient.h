@@ -1,5 +1,5 @@
-#ifndef EXECUTORCONFIGCLIENT_H
-#define EXECUTORCONFIGCLIENT_H
+#ifndef DIRECTORCONFIGCLIENT_H
+#define DIRECTORCONFIGCLIENT_H
 
 // STL
 #include <atomic>
@@ -11,10 +11,10 @@
 #include <cxxutils/vfifo.h>
 #include <cxxutils/posix_helpers.h>
 
-class ExecutorConfigClient : public ClientSocket
+class DirectorConfigClient : public ClientSocket
 {
 public:
-  ExecutorConfigClient(void) noexcept;
+  DirectorConfigClient(void) noexcept;
 
   std::list<std::string> listConfigs(void) const noexcept;
   const std::string& get(const std::string& config, const std::string& key) const noexcept;

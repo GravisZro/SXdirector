@@ -31,8 +31,8 @@ PDTK = ../pdtk
 INCLUDEPATH += $$PDTK
 
 SOURCES = main.cpp \
-    executorcore.cpp \
-    executorconfigclient.cpp \
+    directorcore.cpp \
+    directorconfigclient.cpp \
     configclient.cpp \
     jobcontroller.cpp \
     $$PDTK/application.cpp \
@@ -49,8 +49,8 @@ SOURCES = main.cpp \
     $$PDTK/specialized/ProcessEvent.cpp
 
 HEADERS +=  \
-    executorcore.h \
-    executorconfigclient.h \
+    directorcore.h \
+    directorconfigclient.h \
     configclient.h \
     jobcontroller.h \
     $$PDTK/object.h \

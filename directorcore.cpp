@@ -1,4 +1,4 @@
-#include "executorcore.h"
+#include "directorcore.h"
 
 // POSIX
 #include <sys/shm.h>
@@ -15,7 +15,7 @@
 #define SHARED_MEMORY_SIZE   0x4000
 #define LIST_DELIM ','
 
-ExecutorCore::ExecutorCore(posix::fd_t shmemid) noexcept
+DirectorCore::DirectorCore(posix::fd_t shmemid) noexcept
 {
   if(shmemid != posix::invalid_descriptor)
   {
@@ -48,15 +48,15 @@ ExecutorCore::ExecutorCore(posix::fd_t shmemid) noexcept
     std::memset(shmem, 0, SHARED_MEMORY_SIZE); // zero out for safety
     ::shmctl(shmemid, IPC_RMID, nullptr); // release memory
   }
-  Object::connect(m_config_client.synchronized, this, &ExecutorCore::reloadSettings);
-  Object::connect(m_executor_client.synchronized, this, &ExecutorCore::reloadSettings);
+  Object::connect(m_config_client.synchronized, this, &DirectorCore::reloadSettings);
+  Object::connect(m_director_client.synchronized, this, &DirectorCore::reloadSettings);
 }
 
-ExecutorCore::~ExecutorCore(void) noexcept
+DirectorCore::~DirectorCore(void) noexcept
 {
 }
 
-void ExecutorCore::reloadBinary(void) noexcept
+void DirectorCore::reloadBinary(void) noexcept
 {
   int shmemid = ::shmget(IPC_PRIVATE, SHARED_MEMORY_SIZE, IPC_CREAT | SHM_R | SHM_W); // create shared memory segment
   char* shmem = reinterpret_cast<char*>(::shmat(shmemid, nullptr, 0)); // retrieve shared memory
@@ -79,7 +79,7 @@ void ExecutorCore::reloadBinary(void) noexcept
   process_state_t data;
   if(::procstat(::getpid(), data) == posix::success_response)
     ::execl(data.executable.c_str(), data.executable.c_str(), std::to_string(shmemid).c_str(), NULL);
-  terminal::write("%s%s\n", terminal::critical, "Failed to reload Executor from binary!");
+  terminal::write("%s%s\n", terminal::critical, "Failed to reload Director from binary!");
   Application::quit(errno);
 }
 
@@ -117,10 +117,10 @@ static bool starts_with(const char* seek, const std::string& str) noexcept
   return true;
 }
 
-void ExecutorCore::reloadSettings(void) noexcept
+void DirectorCore::reloadSettings(void) noexcept
 {
   if(m_config_client.isSynchronized() &&
-     m_executor_client.isSynchronized())
+     m_director_client.isSynchronized())
   {
     // destroy all existing data
     m_dep_by_daemon.clear();
@@ -140,30 +140,30 @@ void ExecutorCore::reloadSettings(void) noexcept
                                    m_runlevel_aliases[pair.second]);
 
     // process each config file
-    for(auto& configname : m_executor_client.listConfigs())
+    for(auto& configname : m_director_client.listConfigs())
     {
       auto& node = m_dep_by_daemon[configname];
       if(node.get() == nullptr)
         node = std::make_shared<depnode_t>();
 
       node->daemon_name = configname;
-      node->service_names = clean_explode(m_executor_client.get(configname, "/Process/ProvidedServices"), LIST_DELIM);
+      node->service_names = clean_explode(m_director_client.get(configname, "/Process/ProvidedServices"), LIST_DELIM);
       for(std::string& service  : node->service_names)
         m_dep_by_service.emplace(service, node);
 
-      for(std::string& service  : clean_explode(m_executor_client.get(configname, "/Requirements/ActiveServices"  ), LIST_DELIM))
+      for(std::string& service  : clean_explode(m_director_client.get(configname, "/Requirements/ActiveServices"  ), LIST_DELIM))
         node->service_active.push_back(m_dep_by_service[service]);
 
-      for(std::string& service  : clean_explode(m_executor_client.get(configname, "/Requirements/InactiveServices"), LIST_DELIM))
+      for(std::string& service  : clean_explode(m_director_client.get(configname, "/Requirements/InactiveServices"), LIST_DELIM))
         node->service_inactive.push_back(m_dep_by_service[service]);
 
-      for(std::string& daemon   : clean_explode(m_executor_client.get(configname, "/Requirements/ActiveDaemons"   ), LIST_DELIM))
+      for(std::string& daemon   : clean_explode(m_director_client.get(configname, "/Requirements/ActiveDaemons"   ), LIST_DELIM))
         node->daemon_active.push_back(m_dep_by_daemon[daemon]);
 
-      for(std::string& daemon   : clean_explode(m_executor_client.get(configname, "/Requirements/InactiveDaemons" ), LIST_DELIM))
+      for(std::string& daemon   : clean_explode(m_director_client.get(configname, "/Requirements/InactiveDaemons" ), LIST_DELIM))
         node->daemon_inactive.push_back(m_dep_by_daemon[daemon]);
 
-      for(std::string& rl_alias : clean_explode(m_executor_client.get(configname, "/Requirements/ActiveRunLevels" ), LIST_DELIM))
+      for(std::string& rl_alias : clean_explode(m_director_client.get(configname, "/Requirements/ActiveRunLevels" ), LIST_DELIM))
       {
         auto runlevel = m_runlevel_aliases.find(rl_alias); // find runlevel being referenced
         if(runlevel != m_runlevel_aliases.end()) // if found
@@ -173,7 +173,7 @@ void ExecutorCore::reloadSettings(void) noexcept
         }
       }
 
-      for(std::string& rl_alias : clean_explode(m_executor_client.get(configname, "/Requirements/InactiveRunLevels"), LIST_DELIM))
+      for(std::string& rl_alias : clean_explode(m_director_client.get(configname, "/Requirements/InactiveRunLevels"), LIST_DELIM))
       {
         auto runlevel = m_runlevel_aliases.find(rl_alias); // find runlevel being referenced
         if(runlevel != m_runlevel_aliases.end()) // if found

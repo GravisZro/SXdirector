@@ -12,18 +12,18 @@
 #include <specialized/capabilities.h>
 
 // project
-#include "executorcore.h"
+#include "directorcore.h"
 
-#ifndef EXECUTOR_APP_NAME
-#define EXECUTOR_APP_NAME       "SXexecutor"
+#ifndef DIRECTOR_APP_NAME
+#define DIRECTOR_APP_NAME       "SXdirector"
 #endif
 
-#ifndef EXECUTOR_USERNAME
-#define EXECUTOR_USERNAME       "executor"
+#ifndef DIRECTOR_USERNAME
+#define DIRECTOR_USERNAME       "director"
 #endif
 
-#ifndef EXECUTOR_GROUPNAME
-#define EXECUTOR_GROUPNAME      EXECUTOR_USERNAME
+#ifndef DIRECTOR_GROUPNAME
+#define DIRECTOR_GROUPNAME      DIRECTOR_USERNAME
 #endif
 
 void exiting(void) noexcept
@@ -34,13 +34,13 @@ void exiting(void) noexcept
 int main(int argc, char *argv[]) noexcept
 {
   std::atexit(exiting);
-  posix::syslog.open(EXECUTOR_APP_NAME, posix::facility::daemon);
+  posix::syslog.open(DIRECTOR_APP_NAME, posix::facility::daemon);
 
 #if defined(POSIX_DRAFT_1E)
   if(::prctl(PR_SET_KEEPCAPS, 1) != posix::success_response)
   {
     posix::syslog << posix::priority::error
-                  << "Executor daemon must be launched with the ability to manipulate process capabilities"
+                  << "Director daemon must be launched with the ability to manipulate process capabilities"
                   << posix::eom;
     std::exit(int(std::errc::permission_denied));
   }
@@ -60,14 +60,14 @@ int main(int argc, char *argv[]) noexcept
     posix::syslog << posix::priority::critical << "Failed to set capabilities: " << std::strerror(errno) << posix::eom;
 #endif
 
-  if((std::strcmp(posix::getgroupname(::getgid()), EXECUTOR_GROUPNAME) && // if current username is NOT what we want AND
-      !posix::setgid(posix::getgroupid(EXECUTOR_GROUPNAME))) || // unable to change user id
-     (std::strcmp(posix::getusername(::getuid()), EXECUTOR_USERNAME) && // if current username is NOT what we want AND
-      !posix::setuid(posix::getuserid (EXECUTOR_USERNAME)))) // unable to change user id
+  if((std::strcmp(posix::getgroupname(::getgid()), DIRECTOR_GROUPNAME) && // if current username is NOT what we want AND
+      !posix::setgid(posix::getgroupid(DIRECTOR_GROUPNAME))) || // unable to change user id
+     (std::strcmp(posix::getusername(::getuid()), DIRECTOR_USERNAME) && // if current username is NOT what we want AND
+      !posix::setuid(posix::getuserid (DIRECTOR_USERNAME)))) // unable to change user id
   {
     posix::syslog << posix::priority::error
-                  << "Executor daemon must be launched as user/group "
-                  << '"' << EXECUTOR_USERNAME << '"'
+                  << "Director daemon must be launched as user/group "
+                  << '"' << DIRECTOR_USERNAME << '"'
                   << " or have permissions to setuid/setgid"
                   << posix::eom;
     std::exit(posix::error_t(std::errc::permission_denied));
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) noexcept
   posix::fd_t shmemid = posix::invalid_descriptor;
   if(argc > 1 && std::atoi(argv[1]))
     shmemid = std::atoi(argv[1]);
-  ExecutorCore core(shmemid);
+  DirectorCore core(shmemid);
   (void)core;
 
   static std::function<void(void)> reload = [&core](){ core.reloadBinary(); }; // function to invoke program reload

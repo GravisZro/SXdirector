@@ -1,4 +1,4 @@
-#include "executorconfigclient.h"
+#include "directorconfigclient.h"
 
 // POSIX++
 #include <climits>
@@ -9,12 +9,12 @@
 #include <cxxutils/hashing.h>
 #include <cxxutils/syslogstream.h>
 
-#ifndef MCFS_PATH
-#define MCFS_PATH               "/mc"
+#ifndef SCFS_PATH
+#define SCFS_PATH               "/svc"
 #endif
 
-#ifndef EXECUTOR_USERNAME
-#define EXECUTOR_USERNAME       "executor"
+#ifndef DIRECTOR_USERNAME
+#define DIRECTOR_USERNAME       "director"
 #endif
 
 #ifndef CONFIG_USERNAME
@@ -26,12 +26,12 @@
 #endif
 #define ANONYMOUS_SOCKET        "\0"
 
-#ifndef EXECUTOR_IO_SOCKET
-#define EXECUTOR_IO_SOCKET      MCFS_PATH "/" EXECUTOR_USERNAME "/io"
+#ifndef DIRECTOR_IO_SOCKET
+#define DIRECTOR_IO_SOCKET      SCFS_PATH "/" DIRECTOR_USERNAME "/io"
 #endif
 
-#ifndef EXECUTOR_CONFIG_PATH
-#define EXECUTOR_CONFIG_PATH  "/etc/executor"
+#ifndef DIRECTOR_CONFIG_PATH
+#define DIRECTOR_CONFIG_PATH  "/etc/director"
 #endif
 
 
@@ -59,12 +59,12 @@ static const char* extract_daemon_name(const char* filename)
   return std::strncpy(daemon, start + 1, posix::size_t(end - start + 1)); // extract daemon name
 }
 
-static const char* executor_configfilename(const char* filename)
+static const char* director_configfilename(const char* filename)
 {
   // construct config filename
   static char fullpath[PATH_MAX];
   std::memset(fullpath, 0, PATH_MAX);
-  if(std::snprintf(fullpath, PATH_MAX, "%s/%s", EXECUTOR_CONFIG_PATH, filename) == posix::error_response) // I don't how this could fail
+  if(std::snprintf(fullpath, PATH_MAX, "%s/%s", DIRECTOR_CONFIG_PATH, filename) == posix::error_response) // I don't how this could fail
     return nullptr; // unable to build config filename
   return fullpath;
 }
@@ -91,14 +91,14 @@ static bool readconfig(const char* name, std::string& buffer)
 }
 #endif
 
-ExecutorConfigClient::ExecutorConfigClient(void) noexcept
+DirectorConfigClient::DirectorConfigClient(void) noexcept
   : m_sync(false)
 {
-  Object::connect(newMessage, this, &ExecutorConfigClient::receive);
-  Object::singleShot(this, &ExecutorConfigClient::resync, errno = posix::success_response);
+  Object::connect(newMessage, this, &DirectorConfigClient::receive);
+  Object::singleShot(this, &DirectorConfigClient::resync, errno = posix::success_response);
 }
 
-const std::unordered_map<std::string, std::string>& ExecutorConfigClient::data(const std::string& config) const
+const std::unordered_map<std::string, std::string>& DirectorConfigClient::data(const std::string& config) const
 {
   static const std::unordered_map<std::string, std::string> nullval;
   auto pos = m_data.find(config);
@@ -107,14 +107,14 @@ const std::unordered_map<std::string, std::string>& ExecutorConfigClient::data(c
   return pos->second;
 }
 
-void ExecutorConfigClient::resync(posix::error_t errcode) noexcept
+void DirectorConfigClient::resync(posix::error_t errcode) noexcept
 {
   m_data.clear();
   m_sync = false;
   if(isConnected())
     disconnect();
 
-  bool socket_file = use_socket_file(EXECUTOR_IO_SOCKET);
+  bool socket_file = use_socket_file(DIRECTOR_IO_SOCKET);
 
   bool try_connecting = true;
   if(errcode != posix::success_response) // if not the first connection attempt
@@ -123,7 +123,7 @@ void ExecutorConfigClient::resync(posix::error_t errcode) noexcept
   }
 
   if(try_connecting &&
-     connect(socket_file ? EXECUTOR_IO_SOCKET : ANONYMOUS_SOCKET EXECUTOR_IO_SOCKET) &&
+     connect(socket_file ? DIRECTOR_IO_SOCKET : ANONYMOUS_SOCKET DIRECTOR_IO_SOCKET) &&
      write(vfifo("RPC", "syncCall"), posix::invalid_descriptor)) // no errors!
   {
   }
@@ -132,22 +132,22 @@ void ExecutorConfigClient::resync(posix::error_t errcode) noexcept
     if(try_connecting)
     {
       if(!isConnected())
-        posix::syslog << posix::priority::warning << "Unable to connect to " << (socket_file ? "socket file" : "anonymous socket") << EXECUTOR_IO_SOCKET << posix::eom;
+        posix::syslog << posix::priority::warning << "Unable to connect to " << (socket_file ? "socket file" : "anonymous socket") << DIRECTOR_IO_SOCKET << posix::eom;
       else
-        posix::syslog << posix::priority::warning << "Connection error for " << (socket_file ? "socket file" : "anonymous socket") << EXECUTOR_IO_SOCKET << ": " << std::strerror(errno) << posix::eom;
+        posix::syslog << posix::priority::warning << "Connection error for " << (socket_file ? "socket file" : "anonymous socket") << DIRECTOR_IO_SOCKET << ": " << std::strerror(errno) << posix::eom;
     }
 #ifdef NO_CONFIG_FALLBACK
     Application::quit(NO_CONNECTION_TO_CONFIGURATION_DAEMON);
 #else
-    posix::syslog << posix::priority::warning << "Continuing without configuration daemon connection for Executor.  Falling back on direct file access." << posix::eom;
+    posix::syslog << posix::priority::warning << "Continuing without configuration daemon connection for Director.  Falling back on direct file access." << posix::eom;
 
-    DIR* dir = ::opendir(EXECUTOR_CONFIG_PATH);
+    DIR* dir = ::opendir(DIRECTOR_CONFIG_PATH);
     dirent* entry = nullptr;
     const char* daemon = nullptr;
     const char* filename = nullptr;
     if(dir == nullptr)
     {
-      posix::syslog << posix::priority::critical << "Unable to read directory of Executor configuation files: " << EXECUTOR_CONFIG_PATH << posix::eom;
+      posix::syslog << posix::priority::critical << "Unable to read directory of Director configuation files: " << DIRECTOR_CONFIG_PATH << posix::eom;
       Application::quit(UNABLE_TO_READ_CONFIGURATION_DIRECTORY);
     }
     else
@@ -161,18 +161,18 @@ void ExecutorConfigClient::resync(posix::error_t errcode) noexcept
           continue;
 
         if((daemon   = extract_daemon_name    (entry->d_name)) == nullptr || // if daemon name extraction failed OR
-           (filename = executor_configfilename(entry->d_name)) == nullptr) // failed to build filename
+           (filename = director_configfilename(entry->d_name)) == nullptr) // failed to build filename
           continue; // skip file
 
         tmp_config.clear();
         if(!readconfig(filename, buffer))
         {
-          posix::syslog << posix::priority::critical << "Unable to read Executor daemon configuation file: " << filename << ": " << std::strerror(errno) << posix::eom;
+          posix::syslog << posix::priority::critical << "Unable to read Director daemon configuation file: " << filename << ": " << std::strerror(errno) << posix::eom;
           Application::quit(UNABLE_TO_READ_CONFIGURATION);
         }
         else if(!tmp_config.importText(buffer))
         {
-          posix::syslog << posix::priority::critical << "Parsing failed will processing Executor daemon configuation file: " << filename << posix::eom;
+          posix::syslog << posix::priority::critical << "Parsing failed will processing Director daemon configuation file: " << filename << posix::eom;
           Application::quit(UNABLE_TO_PARSE_CONFIGURATION);
         }
         else // no errors! :)
@@ -187,10 +187,10 @@ void ExecutorConfigClient::resync(posix::error_t errcode) noexcept
   }
 }
 
-void ExecutorConfigClient::valueSet(const std::string& config, const std::string& key, const std::string& value) noexcept
+void DirectorConfigClient::valueSet(const std::string& config, const std::string& key, const std::string& value) noexcept
   { m_data[config][key] = value; }
 
-void ExecutorConfigClient::valueUnset(const std::string& config, const std::string& key) noexcept
+void DirectorConfigClient::valueUnset(const std::string& config, const std::string& key) noexcept
 {
   auto configdata = m_data.find(config);
   if(configdata != m_data.end())
@@ -206,7 +206,7 @@ void ExecutorConfigClient::valueUnset(const std::string& config, const std::stri
   }
 }
 
-std::list<std::string> ExecutorConfigClient::listConfigs(void) const noexcept
+std::list<std::string> DirectorConfigClient::listConfigs(void) const noexcept
 {
   std::list<std::string> names;
   for(const auto& pair : m_data)
@@ -214,7 +214,7 @@ std::list<std::string> ExecutorConfigClient::listConfigs(void) const noexcept
   return names;
 }
 
-const std::string& ExecutorConfigClient::get(const std::string& config, const std::string& key) const noexcept
+const std::string& DirectorConfigClient::get(const std::string& config, const std::string& key) const noexcept
 {
   static std::string nullvalue;
   auto configdata = m_data.find(config);
@@ -226,21 +226,21 @@ const std::string& ExecutorConfigClient::get(const std::string& config, const st
   return keydata->second;
 }
 
-void ExecutorConfigClient::set(const std::string& config, const std::string& key, const std::string& value) noexcept
+void DirectorConfigClient::set(const std::string& config, const std::string& key, const std::string& value) noexcept
 {
   valueSet(config, key, value);
   if(isConnected() && !write(vfifo("RPC", "setCall", config, key, value), posix::invalid_descriptor))
-    Object::singleShot(this, &ExecutorConfigClient::resync, errno);
+    Object::singleShot(this, &DirectorConfigClient::resync, errno);
 }
 
-void ExecutorConfigClient::unset(const std::string& config, const std::string& key) noexcept
+void DirectorConfigClient::unset(const std::string& config, const std::string& key) noexcept
 {
   valueUnset(config, key);
   if(isConnected() && !write(vfifo("RPC", "unsetCall", config, key), posix::invalid_descriptor))
-    Object::singleShot(this, &ExecutorConfigClient::resync, errno);
+    Object::singleShot(this, &DirectorConfigClient::resync, errno);
 }
 
-void ExecutorConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t fd) noexcept
+void DirectorConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t fd) noexcept
 {
   (void)socket;
   (void)fd;
@@ -255,7 +255,7 @@ void ExecutorConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t
       {
         buffer >> errcode;
         if(buffer.hadError() || errcode != posix::success_response)
-          Object::singleShot(this, &ExecutorConfigClient::resync, errcode);
+          Object::singleShot(this, &DirectorConfigClient::resync, errcode);
         else if(errcode == posix::success_response)
         {
           m_sync = true;
@@ -267,7 +267,7 @@ void ExecutorConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t
       {
         buffer >> config >> key >> value;
         if(buffer.hadError())
-          Object::singleShot(this, &ExecutorConfigClient::resync, errcode);
+          Object::singleShot(this, &DirectorConfigClient::resync, errcode);
         else
           valueSet(config, key, value);
       }
@@ -276,7 +276,7 @@ void ExecutorConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t
       {
         buffer >> config >> key;
         if(buffer.hadError())
-          Object::singleShot(this, &ExecutorConfigClient::resync, errcode);
+          Object::singleShot(this, &DirectorConfigClient::resync, errcode);
         else
           valueUnset(config, key);
       }
@@ -285,14 +285,14 @@ void ExecutorConfigClient::receive(posix::fd_t socket, vfifo buffer, posix::fd_t
       {
         buffer >> errcode >> config >> key;
         if(buffer.hadError() || errcode != posix::success_response)
-          Object::singleShot(this, &ExecutorConfigClient::resync, errcode);
+          Object::singleShot(this, &DirectorConfigClient::resync, errcode);
       }
       break;
       case "setReturn"_hash:
       {
         buffer >> errcode >> config >> key;
         if(buffer.hadError() || errcode != posix::success_response)
-          Object::singleShot(this, &ExecutorConfigClient::resync, errcode);
+          Object::singleShot(this, &DirectorConfigClient::resync, errcode);
       }
       break;
     }

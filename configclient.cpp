@@ -8,8 +8,8 @@
 #include <cxxutils/hashing.h>
 #include <cxxutils/syslogstream.h>
 
-#ifndef MCFS_PATH
-#define MCFS_PATH               "/mc"
+#ifndef SCFS_PATH
+#define SCFS_PATH               "/svc"
 #endif
 
 #ifdef ANONYMOUS_SOCKET
@@ -22,15 +22,15 @@
 #endif
 
 #ifndef CONFIG_IO_SOCKET
-#define CONFIG_IO_SOCKET        MCFS_PATH "/" CONFIG_USERNAME "/io"
+#define CONFIG_IO_SOCKET        SCFS_PATH "/" CONFIG_USERNAME "/io"
 #endif
 
 #ifndef CONFIG_CONFIG_PATH
 #define CONFIG_CONFIG_PATH      "/etc/config"
 #endif
 
-#ifndef EXECUTOR_CONFIG_FILE
-#define EXECUTOR_CONFIG_FILE    "executor.conf"
+#ifndef DIRECTOR_CONFIG_FILE
+#define DIRECTOR_CONFIG_FILE    "director.conf"
 #endif
 
 
@@ -107,14 +107,14 @@ void ConfigClient::resync(posix::error_t errcode) noexcept
 
     std::string buffer;
     ConfigManip tmp_config;
-    if(!readconfig(CONFIG_CONFIG_PATH "/" EXECUTOR_CONFIG_FILE, buffer))
+    if(!readconfig(CONFIG_CONFIG_PATH "/" DIRECTOR_CONFIG_FILE, buffer))
     {
-      posix::syslog << posix::priority::critical << "Unable to read Executor daemon configuation file: " << (CONFIG_CONFIG_PATH "/" EXECUTOR_CONFIG_FILE) << ": " << std::strerror(errno) << posix::eom;
+      posix::syslog << posix::priority::critical << "Unable to read Director daemon configuation file: " << (CONFIG_CONFIG_PATH "/" DIRECTOR_CONFIG_FILE) << ": " << std::strerror(errno) << posix::eom;
       Application::quit(UNABLE_TO_READ_CONFIGURATION);
     }
     else if(!tmp_config.importText(buffer))
     {
-      posix::syslog << posix::priority::critical << "Parsing failed will processing Executor daemon configuation file: " << (CONFIG_CONFIG_PATH "/" EXECUTOR_CONFIG_FILE) << posix::eom;
+      posix::syslog << posix::priority::critical << "Parsing failed will processing Director daemon configuation file: " << (CONFIG_CONFIG_PATH "/" DIRECTOR_CONFIG_FILE) << posix::eom;
       Application::quit(UNABLE_TO_PARSE_CONFIGURATION);
     }
     else // no errors! :)
