@@ -98,6 +98,15 @@ ExecutorConfigClient::ExecutorConfigClient(void) noexcept
   Object::singleShot(this, &ExecutorConfigClient::resync, errno = posix::success_response);
 }
 
+const std::unordered_map<std::string, std::string>& ExecutorConfigClient::data(const std::string& config) const
+{
+  static const std::unordered_map<std::string, std::string> nullval;
+  auto pos = m_data.find(config);
+  if(pos == m_data.end())
+    return nullval;
+  return pos->second;
+}
+
 void ExecutorConfigClient::resync(posix::error_t errcode) noexcept
 {
   m_data.clear();
