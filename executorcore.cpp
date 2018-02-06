@@ -3,6 +3,9 @@
 // POSIX
 #include <sys/shm.h>
 
+// POSIX++
+#include <climits>
+
 // PDTK
 #include <cxxutils/syslogstream.h>
 #include <cxxutils/vterm.h>
@@ -10,6 +13,7 @@
 #include <specialized/proclist.h>
 
 #define SHARED_MEMORY_SIZE   0x4000
+#define LIST_DELIM ','
 
 ExecutorCore::ExecutorCore(posix::fd_t shmemid) noexcept
 {
@@ -79,27 +83,102 @@ void ExecutorCore::reloadBinary(void) noexcept
   Application::quit(errno);
 }
 
+static std::list<std::string> clean_explode(const std::string& str, char delim)
+{
+  std::list<std::string> strs;
+  std::string newstr;
+  newstr.reserve(NAME_MAX);
+
+  for(auto& character : str)
+  {
+    if(character == delim)
+    {
+      if(!newstr.empty())
+      {
+        strs.push_back(newstr);
+        newstr.clear();
+      }
+    }
+    else if(std::isgraph(character))
+      newstr.push_back(character);
+  }
+
+  if(!newstr.empty())
+    strs.push_back(newstr);
+
+  return strs;
+}
+
+static bool starts_with(const char* seek, const std::string& str) noexcept
+{
+  for(const char* other = str.data(); *seek; ++seek, ++other)
+    if(*seek != *other || !*other)
+      return false;
+  return true;
+}
+
 void ExecutorCore::reloadSettings(void) noexcept
 {
   if(m_config_client.isSynchronized() &&
      m_executor_client.isSynchronized())
   {
-    const std::vector<std::string> keys =
-    {
-      "/Requirements/ActiveServices",
-      "/Requirements/InactiveServices",
-      "/Requirements/ActiveDaemons",
-      "/Requirements/InactiveDaemons",
-      "/Requirements/IncludeRunLevels",
-      "/Requirements/ExcludeRunLevels",
-      "/Requirements/MinRunLevel",
-      "/Requirements/MaxRunLevel",
-    };
+    // destroy all existing data
+    m_dep_by_daemon.clear();
+    m_dep_by_runlevel.clear();
+    m_dep_by_service.clear();
+    m_runlevel_aliases.clear();
+
+    // initialize runlevel aliases with numeric entries
+    for(uint16_t i = 0; i < 256; ++i)
+      m_runlevel_aliases.emplace(std::to_string(i), uint8_t(i));
+
+    // add custom runlevel aliases
+    for(auto& pair : m_config_client.data()) // check every config client entry
+      if(starts_with("/RunlevelAliases/", pair.first) && // if this is a runlevel alias entry AND
+         m_runlevel_aliases.find(pair.second) != m_runlevel_aliases.end()) // it's a valid number (0 through 255) or an existing alias
+        m_runlevel_aliases.emplace(pair.first.substr(sizeof("/RunlevelAliases/") - 1),  // add new alias (or ignore if already existing)
+                                   m_runlevel_aliases[pair.second]);
+
+    // process each config file
     for(auto& configname : m_executor_client.listConfigs())
     {
-      m_executor_client.get(configname, "/Process/ProvidesServices");
-      for(auto& key : keys)
-        m_executor_client.get(configname, key);
+      auto& node = m_dep_by_daemon[configname];
+      if(node.get() == nullptr)
+        node = std::make_shared<depnode_t>();
+
+      node->daemon_name = configname;
+      node->service_names = clean_explode(m_executor_client.get(configname, "/Process/ProvidedServices"), LIST_DELIM);
+      for(std::string& service  : node->service_names)
+        m_dep_by_service.emplace(service, node);
+
+      for(std::string& service  : clean_explode(m_executor_client.get(configname, "/Requirements/ActiveServices"  ), LIST_DELIM))
+        node->service_active.push_back(m_dep_by_service[service]);
+
+      for(std::string& service  : clean_explode(m_executor_client.get(configname, "/Requirements/InactiveServices"), LIST_DELIM))
+        node->service_inactive.push_back(m_dep_by_service[service]);
+
+      for(std::string& daemon   : clean_explode(m_executor_client.get(configname, "/Requirements/ActiveDaemons"   ), LIST_DELIM))
+        node->daemon_active.push_back(m_dep_by_daemon[daemon]);
+
+      for(std::string& daemon   : clean_explode(m_executor_client.get(configname, "/Requirements/InactiveDaemons" ), LIST_DELIM))
+        node->daemon_inactive.push_back(m_dep_by_daemon[daemon]);
+
+      for(std::string& rl_alias : clean_explode(m_executor_client.get(configname, "/Requirements/ActiveRunLevels" ), LIST_DELIM))
+      {
+        auto runlevel = m_runlevel_aliases.find(rl_alias); // find runlevel being referenced
+        if(runlevel != m_runlevel_aliases.end()) // if found
+        {
+          node->runlevel_active[runlevel->second] = true; // enable for this node
+          m_dep_by_runlevel[runlevel->second].insert(node); // add to list of runlevel enabled nodes
+        }
+      }
+
+      for(std::string& rl_alias : clean_explode(m_executor_client.get(configname, "/Requirements/InactiveRunLevels"), LIST_DELIM))
+      {
+        auto runlevel = m_runlevel_aliases.find(rl_alias); // find runlevel being referenced
+        if(runlevel != m_runlevel_aliases.end()) // if found
+          node->runlevel_inactive[runlevel->second] = true; // enable for this node
+      }
     }
   }
 }
