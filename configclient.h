@@ -22,6 +22,8 @@ public:
 
   bool isSynchronized(void) const noexcept { return m_sync; }
   signal<> synchronized;
+
+  const std::unordered_map<std::string, std::string>& data(void) const { return m_data; }
 private:
   void resync(posix::error_t errcode) noexcept;
   void receive(posix::fd_t socket, vfifo buffer, posix::fd_t fd) noexcept;
