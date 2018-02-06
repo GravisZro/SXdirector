@@ -1,8 +1,12 @@
+// STL
+#include <functional>
+
 // POSIX++
 #include <cstdlib> // for std::atexit
 #include <csignal> // for std::signal
 
 // PDTK
+#include <object.h>
 #include <application.h>
 #include <cxxutils/syslogstream.h>
 #include <specialized/capabilities.h>
@@ -22,7 +26,7 @@
 #define EXECUTOR_GROUPNAME      EXECUTOR_USERNAME
 #endif
 
-void exiting(void)
+void exiting(void) noexcept
 {
   posix::syslog << posix::priority::notice << "daemon has exited." << posix::eom;
 }
@@ -36,7 +40,7 @@ int main(int argc, char *argv[]) noexcept
   if(::prctl(PR_SET_KEEPCAPS, 1) != posix::success_response)
   {
     posix::syslog << posix::priority::error
-                  << "Daemon must be launched with the ability to manipulate process capabilities"
+                  << "Executor daemon must be launched with the ability to manipulate process capabilities"
                   << posix::eom;
     std::exit(int(std::errc::permission_denied));
   }
@@ -62,7 +66,7 @@ int main(int argc, char *argv[]) noexcept
       !posix::setuid(posix::getuserid (EXECUTOR_USERNAME)))) // unable to change user id
   {
     posix::syslog << posix::priority::error
-                  << "Daemon must be launched as user/group "
+                  << "Executor daemon must be launched as user/group "
                   << '"' << EXECUTOR_USERNAME << '"'
                   << " or have permissions to setuid/setgid"
                   << posix::eom;
@@ -71,13 +75,16 @@ int main(int argc, char *argv[]) noexcept
 
   Application app;
   std::signal(SIGPIPE, SIG_IGN);
-  std::signal(SIGINT, [](int){ Application::quit(0); }); // exit gracefully
+  //std::signal(SIGINT, [](int){ printf("quit!\n"); Application::quit(0); }); // exit gracefully
 
   posix::fd_t shmemid = posix::invalid_descriptor;
   if(argc > 1 && std::atoi(argv[1]))
     shmemid = std::atoi(argv[1]);
   ExecutorCore core(shmemid);
   (void)core;
+
+  static std::function<void(void)> reload = [&core](){ core.reloadBinary(); }; // function to invoke program reload
+  std::signal(SIGINT, [](int){ Object::singleShot(reload); }); // queue function to invoke program reload
 
   return app.exec();
 }
