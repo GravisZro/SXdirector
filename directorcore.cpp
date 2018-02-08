@@ -15,7 +15,8 @@
 #define SHARED_MEMORY_SIZE   0x4000
 #define LIST_DELIM ','
 
-DirectorCore::DirectorCore(posix::fd_t shmemid) noexcept
+DirectorCore::DirectorCore(uid_t euid, gid_t egid, posix::fd_t shmemid) noexcept
+  : m_euid(euid), m_egid(egid)
 {
   if(shmemid != posix::invalid_descriptor)
   {
@@ -73,6 +74,13 @@ void DirectorCore::reloadBinary(void) noexcept
     storage << list.size();
     for(auto& pair : list)
       storage << pair.first << pair.second;
+  }
+
+  if(!posix::setegid(m_egid) || // unable to change effective group id
+     !posix::seteuid(m_euid)) // unable to change effective user id
+  {
+    posix::syslog << posix::priority::error << "Unable to restore effective UID and effective GID." << posix::eom;
+    std::exit(posix::error_t(std::errc::permission_denied));
   }
 
   // reload process

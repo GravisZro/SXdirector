@@ -22,7 +22,7 @@
 class DirectorCore : public Object
 {
 public:
-  DirectorCore(posix::fd_t shmemid = posix::invalid_descriptor) noexcept; // take shared memory identifier from previous instance
+  DirectorCore(uid_t euid, gid_t egid, posix::fd_t shmemid = posix::invalid_descriptor) noexcept; // take shared memory identifier from previous instance
  ~DirectorCore(void) noexcept;
 
   void reloadBinary  (void) noexcept;
@@ -44,9 +44,13 @@ private:
   std::map<std::string, std::shared_ptr<depnode_t>> m_dep_by_service;
   std::map<uint8_t, std::set<std::shared_ptr<depnode_t>>> m_dep_by_runlevel;
 
+  std::map<uint8_t, std::list<std::string>> m_start_orders; // the daemon starting order by runlevels
+
   std::unordered_map<std::string, JobController> m_process_map; // indexed by daemon name
   ConfigClient m_config_client;
   DirectorConfigClient m_director_client;
+  uid_t m_euid;
+  gid_t m_egid;
 };
 
 #endif // DIRECTORCORE_H

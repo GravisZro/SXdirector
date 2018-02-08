@@ -28,15 +28,18 @@
 
 void exiting(void) noexcept
 {
+  printf("exiting\n");
   posix::syslog << posix::priority::notice << "daemon has exited." << posix::eom;
 }
 
 int main(int argc, char *argv[]) noexcept
 {
+  uid_t euid = posix::geteuid();
+  gid_t egid = posix::getegid();
   std::atexit(exiting);
   posix::syslog.open(DIRECTOR_APP_NAME, posix::facility::daemon);
 
-#if defined(POSIX_DRAFT_1E)
+#if 0 && defined(POSIX_DRAFT_1E)
   if(::prctl(PR_SET_KEEPCAPS, 1) != posix::success_response)
   {
     posix::syslog << posix::priority::error
@@ -56,19 +59,22 @@ int main(int argc, char *argv[]) noexcept
       .set(capflag::setuid)
       .set(capflag::setgid);
 
+  caps.permitted = caps.effective;
+  caps.inheritable = caps.effective;
+
   if(::capset(caps, caps) != posix::success_response)
     posix::syslog << posix::priority::critical << "Failed to set capabilities: " << std::strerror(errno) << posix::eom;
 #endif
 
-  if((std::strcmp(posix::getgroupname(::getgid()), DIRECTOR_GROUPNAME) && // if current username is NOT what we want AND
-      !posix::setgid(posix::getgroupid(DIRECTOR_GROUPNAME))) || // unable to change user id
-     (std::strcmp(posix::getusername(::getuid()), DIRECTOR_USERNAME) && // if current username is NOT what we want AND
-      !posix::setuid(posix::getuserid (DIRECTOR_USERNAME)))) // unable to change user id
+  if((std::strcmp(posix::getgroupname(egid), DIRECTOR_GROUPNAME) && // if current effective group name is NOT what we want AND
+      !posix::setegid(posix::getgroupid(DIRECTOR_GROUPNAME))) || // unable to change effective group id
+     (std::strcmp(posix::getusername(euid), DIRECTOR_USERNAME) && // if current effective user name is NOT what we want AND
+      !posix::seteuid(posix::getuserid (DIRECTOR_USERNAME)))) // unable to change effective user id
   {
     posix::syslog << posix::priority::error
                   << "Director daemon must be launched as user/group "
                   << '"' << DIRECTOR_USERNAME << '"'
-                  << " or have permissions to setuid/setgid"
+                  << " or have permissions to seteuid/setegid"
                   << posix::eom;
     std::exit(posix::error_t(std::errc::permission_denied));
   }
@@ -80,7 +86,7 @@ int main(int argc, char *argv[]) noexcept
   posix::fd_t shmemid = posix::invalid_descriptor;
   if(argc > 1 && std::atoi(argv[1]))
     shmemid = std::atoi(argv[1]);
-  DirectorCore core(shmemid);
+  DirectorCore core(euid, egid, shmemid);
   (void)core;
 
   static std::function<void(void)> reload = [&core](){ core.reloadBinary(); }; // function to invoke program reload
