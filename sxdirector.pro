@@ -1,6 +1,7 @@
 TEMPLATE = app
 CONFIG -= qt
-CONFIG += c++14
+CONFIG -= c++11
+CONFIG -= c++14
 
 # FOR CLANG
 #QMAKE_CXXFLAGS += -stdlib=libc++
@@ -8,11 +9,10 @@ CONFIG += c++14
 
 # universal arguments
 QMAKE_CXXFLAGS += -std=c++14
-QMAKE_CXXFLAGS += -pipe -Os -fno-exceptions -fno-rtti -fno-threadsafe-statics
-#QMAKE_CXXFLAGS += -pipe -Os
-#QMAKE_CXXFLAGS += -fno-exceptions
-#QMAKE_CXXFLAGS += -fno-rtti
-#QMAKE_CXXFLAGS += -fno-threadsafe-statics
+QMAKE_CXXFLAGS += -Os
+QMAKE_CXXFLAGS += -fno-exceptions
+QMAKE_CXXFLAGS += -fno-rtti
+QMAKE_CXXFLAGS += -fno-threadsafe-statics
 DEFINES += INTERRUPTED_WRAPPER
 
 #LIBS += -lpthread
@@ -35,6 +35,7 @@ SOURCES = main.cpp \
     directorconfigclient.cpp \
     configclient.cpp \
     jobcontroller.cpp \
+    dependencysolver.cpp \
     $$PDTK/application.cpp \
     $$PDTK/process.cpp \
     $$PDTK/socket.cpp \
@@ -53,6 +54,7 @@ HEADERS +=  \
     directorconfigclient.h \
     configclient.h \
     jobcontroller.h \
+    dependencysolver.h \
     $$PDTK/object.h \
     $$PDTK/application.h \
     $$PDTK/process.h \
