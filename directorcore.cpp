@@ -33,6 +33,7 @@ DirectorCore::DirectorCore(uid_t euid, gid_t egid, posix::fd_t shmemid) noexcept
     pid_t parent_pid = 0;
     pid_t child_pid = 0;
 
+    storage >> m_runlevel;
     storage >> job_count;
     for(size_t i = 0; i < job_count; ++i)
     {
@@ -49,12 +50,42 @@ DirectorCore::DirectorCore(uid_t euid, gid_t egid, posix::fd_t shmemid) noexcept
     std::memset(shmem, 0, SHARED_MEMORY_SIZE); // zero out for safety
     ::shmctl(shmemid, IPC_RMID, nullptr); // release memory
   }
+
   Object::connect(m_config_client.synchronized, this, &DirectorCore::reloadSettings);
   Object::connect(m_director_client.synchronized, this, &DirectorCore::reloadSettings);
 }
 
 DirectorCore::~DirectorCore(void) noexcept
 {
+}
+
+const std::string& DirectorCore::getConfigData(const std::string& config, const std::string& key) const noexcept
+{
+  return m_director_client.get(config, key);
+}
+
+std::list<std::string> DirectorCore::getConfigList(void) const noexcept
+{
+  return m_director_client.listConfigs();
+}
+
+
+int DirectorCore::getRunlevel(const std::string& rlname) const noexcept
+{
+  auto iter = m_runlevel_aliases.find(rlname);
+  if(iter == m_runlevel_aliases.end())
+    return posix::error_response;
+  return iter->second;
+}
+
+bool DirectorCore::setRunLevel(const std::string& rlname) noexcept
+{
+  if(getRunlevel(rlname) == posix::error_response)
+    return false;
+
+  start_stop_t ssorder = getRunlevelOrder(rlname);
+
+  return true;
 }
 
 void DirectorCore::reloadBinary(void) noexcept
@@ -66,6 +97,7 @@ void DirectorCore::reloadBinary(void) noexcept
   // save state to shared memory
   vfifo storage(shmem, SHARED_MEMORY_SIZE);
 
+  storage << m_runlevel;
   storage << m_process_map.size();
   for(auto& pair : m_process_map)
   {
@@ -91,31 +123,6 @@ void DirectorCore::reloadBinary(void) noexcept
   Application::quit(errno);
 }
 
-static std::list<std::string> clean_explode(const std::string& str, char delim)
-{
-  std::list<std::string> strs;
-  std::string newstr;
-  newstr.reserve(NAME_MAX);
-
-  for(auto& character : str)
-  {
-    if(character == delim)
-    {
-      if(!newstr.empty())
-      {
-        strs.push_back(newstr);
-        newstr.clear();
-      }
-    }
-    else if(std::isgraph(character))
-      newstr.push_back(character);
-  }
-
-  if(!newstr.empty())
-    strs.push_back(newstr);
-
-  return strs;
-}
 
 static bool starts_with(const char* seek, const std::string& str) noexcept
 {
@@ -131,9 +138,6 @@ void DirectorCore::reloadSettings(void) noexcept
      m_director_client.isSynchronized())
   {
     // destroy all existing data
-    m_dep_by_daemon.clear();
-    m_dep_by_runlevel.clear();
-    m_dep_by_service.clear();
     m_runlevel_aliases.clear();
 
     // initialize runlevel aliases with numeric entries
@@ -142,51 +146,11 @@ void DirectorCore::reloadSettings(void) noexcept
 
     // add custom runlevel aliases
     for(auto& pair : m_config_client.data()) // check every config client entry
-      if(starts_with("/RunlevelAliases/", pair.first) && // if this is a runlevel alias entry AND
+      if(starts_with("/Runlevels/", pair.first) && // if this is a runlevel alias entry AND
          m_runlevel_aliases.find(pair.second) != m_runlevel_aliases.end()) // it's a valid number (0 through 255) or an existing alias
-        m_runlevel_aliases.emplace(pair.first.substr(sizeof("/RunlevelAliases/") - 1),  // add new alias (or ignore if already existing)
+        m_runlevel_aliases.emplace(pair.first.substr(sizeof("/Runlevels/") - 1),  // add new alias (or ignore if already existing)
                                    m_runlevel_aliases[pair.second]);
 
-    // process each config file
-    for(auto& configname : m_director_client.listConfigs())
-    {
-      auto& node = m_dep_by_daemon[configname];
-      if(node.get() == nullptr)
-        node = std::make_shared<depnode_t>();
-
-      node->daemon_name = configname;
-      node->service_names = clean_explode(m_director_client.get(configname, "/Process/ProvidedServices"), LIST_DELIM);
-      for(std::string& service  : node->service_names)
-        m_dep_by_service.emplace(service, node);
-
-      for(std::string& service  : clean_explode(m_director_client.get(configname, "/Requirements/ActiveServices"  ), LIST_DELIM))
-        node->service_active.push_back(m_dep_by_service[service]);
-
-      for(std::string& service  : clean_explode(m_director_client.get(configname, "/Requirements/InactiveServices"), LIST_DELIM))
-        node->service_inactive.push_back(m_dep_by_service[service]);
-
-      for(std::string& daemon   : clean_explode(m_director_client.get(configname, "/Requirements/ActiveDaemons"   ), LIST_DELIM))
-        node->daemon_active.push_back(m_dep_by_daemon[daemon]);
-
-      for(std::string& daemon   : clean_explode(m_director_client.get(configname, "/Requirements/InactiveDaemons" ), LIST_DELIM))
-        node->daemon_inactive.push_back(m_dep_by_daemon[daemon]);
-
-      for(std::string& rl_alias : clean_explode(m_director_client.get(configname, "/Requirements/ActiveRunLevels" ), LIST_DELIM))
-      {
-        auto runlevel = m_runlevel_aliases.find(rl_alias); // find runlevel being referenced
-        if(runlevel != m_runlevel_aliases.end()) // if found
-        {
-          node->runlevel_active[runlevel->second] = true; // enable for this node
-          m_dep_by_runlevel[runlevel->second].insert(node); // add to list of runlevel enabled nodes
-        }
-      }
-
-      for(std::string& rl_alias : clean_explode(m_director_client.get(configname, "/Requirements/InactiveRunLevels"), LIST_DELIM))
-      {
-        auto runlevel = m_runlevel_aliases.find(rl_alias); // find runlevel being referenced
-        if(runlevel != m_runlevel_aliases.end()) // if found
-          node->runlevel_inactive[runlevel->second] = true; // enable for this node
-      }
-    }
+    resolveDependencies();
   }
 }
