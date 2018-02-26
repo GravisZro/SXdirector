@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <list>
+#include <vector>
 #include <set>
 #include <memory>
 #include <functional>
@@ -15,8 +16,8 @@
 struct start_stop_t
 {
   uint8_t runlevel;
-  std::list<std::string> start;
-  std::list<std::string> stop;
+  std::vector<std::list<std::string>> start;
+  std::vector<std::list<std::string>> stop;
 };
 
 class DependencySolver
@@ -29,7 +30,12 @@ public:
   virtual std::list<std::string> getConfigList(void) const noexcept = 0;
   virtual int getRunlevel(const std::string& rlname) const noexcept = 0;
 
+  std::list<std::string> getErrorMessages(void) const noexcept { return m_errors; }
+
 private:
+  int queueErrorMessage(const std::string& context, const std::string& source, const std::string& problem) noexcept;
+  std::list<std::string> m_errors;
+
   struct depnode_t;
   using depnodeptr = std::shared_ptr<depnode_t>;
   template <typename T>
@@ -53,16 +59,13 @@ private:
 
     activity_t<depsets_t<std::string>> dep_daemons;
     activity_t<depsets_t<std::string>> dep_services;
-    activity_t<depsets_t<depnodeptr>> dep_nodes;
+    activity_t<depsets_t<depnodeptr>> dep_nodes; // cache
 
     std::set<uint8_t> runlevel_start;
     std::set<uint8_t> runlevel_stop;
   };
 
-  std::set<depnodeptr> m_all_deps;
-  std::map<std::string, depnodeptr> m_dep_by_daemon;
-  std::map<std::string, depnodeptr> m_dep_by_service;
-  std::map<depnodeptr, int> m_dep_depths;
+  std::map<depnodeptr, int> m_dep_depths; // cache
 
   std::map<uint8_t, activity_t<std::set<std::pair<int, depnodeptr>>>> m_orders; // the daemon starting order by runlevels
 
