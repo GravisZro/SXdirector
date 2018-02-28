@@ -1,5 +1,9 @@
 #include "dependencysolver.h"
 
+// STL
+#include <algorithm>
+
+// POSIX++
 #include <climits>
 
 #define LIST_DELIM ','
@@ -41,8 +45,7 @@ int DependencySolver::queueErrorMessage(const std::string& context, const std::s
 
 int DependencySolver::dep_depth(depnodeptr dep, std::set<depnodeptr> activepath, std::set<depnodeptr> inactivepath) noexcept
 {
-  int max_activedepth = 0;
-  int max_inactivedepth = 0;
+  int max_depth = 0;
 
   if(dep == nullptr)
     return posix::error_response; // report unresolved dependency
@@ -57,39 +60,29 @@ int DependencySolver::dep_depth(depnodeptr dep, std::set<depnodeptr> activepath,
 
   for(auto& ptr : dep->dep_nodes.active.requirement)
   {
-    int activedepth = dep_depth(ptr, activepath, std::set<depnodeptr>());
-    if(activedepth < 0)
+    int depth = dep_depth(ptr, activepath, std::set<depnodeptr>());
+    if(depth < 0)
       return queueErrorMessage(dep->daemon_name, "dependencies.active.requirement", "circular"); // report circular dependency because these dependencies are mandatory
-    if(activedepth > max_activedepth)
-      max_activedepth = activedepth;
+    max_depth = std::max(max_depth, depth);
   }
 
   for(auto& ptr : dep->dep_nodes.inactive.requirement)
   {
-    int inactivedepth = dep_depth(ptr, std::set<depnodeptr>(), inactivepath);
-    if(inactivedepth < 0)
+    int depth = dep_depth(ptr, std::set<depnodeptr>(), inactivepath);
+    if(depth < 0)
       return queueErrorMessage(dep->daemon_name, "dependencies.inactive.requirement", "circular"); // report circular dependency because these dependencies are mandatory
-    if(inactivedepth > max_inactivedepth)
-      max_inactivedepth = inactivedepth;
+    max_depth = std::max(max_depth, depth);
   }
 
   for(auto& ptr : dep->dep_nodes.active.enhancement)
-  {
-    int activedepth = dep_depth(ptr, activepath, std::set<depnodeptr>());
+    max_depth = std::max(max_depth, dep_depth(ptr, activepath, std::set<depnodeptr>()));
     // NOTE: ignore circular dependencies because these dependencies are optional enhancements
-    if(activedepth > max_activedepth)
-      max_activedepth = activedepth;
-  }
 
   for(auto& ptr : dep->dep_nodes.inactive.enhancement)
-  {
-    int inactivedepth = dep_depth(ptr, std::set<depnodeptr>(), inactivepath);
+    max_depth = std::max(max_depth, dep_depth(ptr, std::set<depnodeptr>(), inactivepath));
     // NOTE: ignore circular dependencies because these dependencies are optional enhancements
-    if(inactivedepth > max_inactivedepth)
-      max_inactivedepth = inactivedepth;
-  }
 
-  return m_dep_depths.emplace(dep, max_activedepth + max_inactivedepth + 1).first->second; // add one to include self
+  return m_dep_depths.emplace(dep, max_depth + 1).first->second; // add one to include self
 }
 
 bool DependencySolver::recurse_add(std::set<std::pair<int, depnodeptr>>& superset, depnodeptr dep, std::function<depsets_t<depnodeptr>&(depnodeptr)>& selector) const noexcept
