@@ -115,7 +115,9 @@ bool DependencySolver::recurse_add(std::set<std::pair<int, depnodeptr>>& superse
         superset.emplace(subsubdep);
   }
 
-  return superset.emplace(depth, dep).second; // all required dependencies have been met!
+   // all required dependencies have been met!
+  superset.emplace(depth, dep);
+  return true;
 }
 
 void DependencySolver::resolveDependencies(void) noexcept
@@ -217,10 +219,12 @@ void DependencySolver::resolveDependencies(void) noexcept
   for(auto& dep : all_deps)
   {
     for(uint8_t rl : dep->runlevel_start)
-      recurse_add(m_orders[rl].active, dep, active); // add all dependencies to the map of starting orders
+      if(!recurse_add(m_orders[rl].active, dep, active)) // add all dependencies to the map of starting orders
+        queueErrorMessage(dep->daemon_name, "runlevel.active", "add failed");
 
     for(uint8_t rl : dep->runlevel_stop)
-      recurse_add(m_orders[rl].inactive, dep, inactive); // add all dependencies to the map of stopping orders
+      if(!recurse_add(m_orders[rl].inactive, dep, inactive)) // add all dependencies to the map of stopping orders
+        queueErrorMessage(dep->daemon_name, "runlevel.inactive", "add failed");
   }
 
   // destroy all cached data
