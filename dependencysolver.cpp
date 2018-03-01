@@ -42,7 +42,6 @@ int DependencySolver::queueErrorMessage(const std::string& context, const std::s
       .append("|").append(problem);
   return posix::error_response;
 }
-
 int DependencySolver::dep_depth(depnodeptr dep, std::set<depnodeptr> activepath, std::set<depnodeptr> inactivepath) noexcept
 {
   int max_depth = 0;
@@ -56,7 +55,7 @@ int DependencySolver::dep_depth(depnodeptr dep, std::set<depnodeptr> activepath,
 
   if(!activepath.emplace(dep).second ||
      !inactivepath.emplace(dep).second) // if failed to add to path (because it exists)
-    return m_dep_depths.emplace(dep, posix::error_response).first->second; // report circular dependency
+    return posix::error_response; // report circular dependency
 
   for(auto& ptr : dep->dep_nodes.active.requirement)
   {
@@ -213,11 +212,11 @@ void DependencySolver::resolveDependencies(void) noexcept
   {
     for(uint8_t rl : dep->runlevel_start)
       if(!recurse_add(m_orders[rl].active, dep, active)) // add all dependencies to the map of starting orders
-        queueErrorMessage(dep->daemon_name, "runlevel.active", "add failed");
+        queueErrorMessage(dep->daemon_name, "runlevel." + std::to_string(rl) + ".active", "add failed");
 
     for(uint8_t rl : dep->runlevel_stop)
       if(!recurse_add(m_orders[rl].inactive, dep, inactive)) // add all dependencies to the map of stopping orders
-        queueErrorMessage(dep->daemon_name, "runlevel.inactive", "add failed");
+        queueErrorMessage(dep->daemon_name, "runlevel." + std::to_string(rl) + ".inactive", "add failed");
   }
 
   // destroy all cached data
