@@ -38,28 +38,27 @@ private:
 
   struct depnode_t;
   using depnodeptr = std::shared_ptr<depnode_t>;
+
   template <typename T>
-  struct depsets_t
+  struct depinfo_t
   {
-    std::set<T> requirement;
-    std::set<T> enhancement;
+    bool is_required;
+    bool is_active;
+    T data;
+    bool operator <(const depinfo_t& other) const noexcept { return data < other.data; }
   };
 
   template <typename T>
-  struct activity_t
-  {
-    T active;
-    T inactive;
-  };
+  using depinfoset_t = std::set<depinfo_t<T>>;
 
   struct depnode_t
   {
     std::string daemon_name;
     std::set<std::string> service_names;
 
-    activity_t<depsets_t<std::string>> dep_daemons;
-    activity_t<depsets_t<std::string>> dep_services;
-    activity_t<depsets_t<depnodeptr>> dep_nodes; // cache
+    depinfoset_t<std::string> dep_daemons;
+    depinfoset_t<std::string> dep_services;
+    depinfoset_t<depnodeptr> dep_nodes; // cache
 
     std::set<uint8_t> runlevel_start;
     std::set<uint8_t> runlevel_stop;
@@ -67,10 +66,12 @@ private:
 
   std::map<depnodeptr, int> m_dep_depths; // cache
 
-  std::map<uint8_t, activity_t<std::set<std::pair<int, depnodeptr>>>> m_orders; // the daemon starting order by runlevels
+  using runlevelorder_t = std::set<std::pair<int, depnodeptr>>;
+  std::map<uint8_t, runlevelorder_t> m_orders_start; // the daemon starting order by runlevels
+  std::map<uint8_t, runlevelorder_t> m_orders_stop; // the daemon stopping order by runlevels
 
-  int dep_depth(depnodeptr dep, std::set<depnodeptr> activepath, std::set<depnodeptr> inactivepath) noexcept;
-  bool recurse_add(std::set<std::pair<int, depnodeptr>>& subset, depnodeptr dep, std::function<depsets_t<depnodeptr>&(depnodeptr)>& selector) const noexcept;
+  int dep_depth(depnodeptr origin, depinfo_t<depnodeptr> dep, depinfoset_t<depnodeptr> path, bool mandatory) noexcept;
+  bool recurse_add(std::set<std::pair<int, depnodeptr>>& subset, depnodeptr dep, bool active) noexcept;
 };
 
 #endif // DEPENDENCYSOLVER_H

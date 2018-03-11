@@ -42,50 +42,41 @@ int DependencySolver::queueErrorMessage(const std::string& context, const std::s
       .append("|").append(problem);
   return posix::error_response;
 }
-int DependencySolver::dep_depth(depnodeptr dep, std::set<depnodeptr> activepath, std::set<depnodeptr> inactivepath) noexcept
+
+static inline std::string active_string(bool is_active) { return is_active ? "active" : "inactive"; }
+static inline std::string required_string(bool is_required) { return is_required ? "requirement" : "enhancement"; }
+
+int DependencySolver::dep_depth(depnodeptr origin, depinfo_t<depnodeptr> dep, depinfoset_t<depnodeptr> path, bool mandatory) noexcept
 {
   int max_depth = 0;
 
-  if(dep == nullptr)
+  if(dep.data == nullptr)
     return posix::error_response; // report unresolved dependency
 
-  auto res = m_dep_depths.find(dep);
+  auto res = m_dep_depths.find(dep.data);
   if(res != m_dep_depths.end())
     return res->second;
 
-  if(!activepath.emplace(dep).second ||
-     !inactivepath.emplace(dep).second) // if failed to add to path (because it exists)
+  if(!path.emplace(dep).second) // if failed to add to path (because it exists)
     return posix::error_response; // report circular dependency
 
-  for(auto& ptr : dep->dep_nodes.active.requirement)
+  for(auto& ptr : dep.data->dep_nodes)
   {
-    int depth = dep_depth(ptr, activepath, std::set<depnodeptr>());
-    if(depth < 0)
-      return queueErrorMessage(dep->daemon_name, "dependencies.active.requirement", "circular"); // report circular dependency because these dependencies are mandatory
+    int depth = dep_depth(origin, ptr, path, mandatory && ptr.is_required);
+    if(mandatory && ptr.is_required && depth < 0)
+      queueErrorMessage(origin->daemon_name, dep.data->daemon_name + ".dependencies." + active_string(dep.is_active) + ".requirement", "circular"); // report circular dependency because these dependencies are mandatory
     max_depth = std::max(max_depth, depth);
   }
 
-  for(auto& ptr : dep->dep_nodes.inactive.requirement)
-  {
-    int depth = dep_depth(ptr, std::set<depnodeptr>(), inactivepath);
-    if(depth < 0)
-      return queueErrorMessage(dep->daemon_name, "dependencies.inactive.requirement", "circular"); // report circular dependency because these dependencies are mandatory
-    max_depth = std::max(max_depth, depth);
-  }
-
-  for(auto& ptr : dep->dep_nodes.active.enhancement)
-    max_depth = std::max(max_depth, dep_depth(ptr, activepath, std::set<depnodeptr>()));
-    // NOTE: ignore circular dependencies because these dependencies are optional enhancements
-
-  for(auto& ptr : dep->dep_nodes.inactive.enhancement)
-    max_depth = std::max(max_depth, dep_depth(ptr, std::set<depnodeptr>(), inactivepath));
-    // NOTE: ignore circular dependencies because these dependencies are optional enhancements
-
-  return m_dep_depths.emplace(dep, max_depth + 1).first->second; // add one to include self
+  return max_depth + 1;
+  //return m_dep_depths.emplace(dep.data, max_depth + 1).first->second; // add one to include self
 }
 
-bool DependencySolver::recurse_add(std::set<std::pair<int, depnodeptr>>& superset, depnodeptr dep, std::function<depsets_t<depnodeptr>&(depnodeptr)>& selector) const noexcept
+bool DependencySolver::recurse_add(std::set<std::pair<int, depnodeptr>>& superset, depnodeptr dep, bool is_active) noexcept
 {
+  const bool requirement = true;
+//  int depth = dep_depth(dep, depinfo_t<depnodeptr>{requirement, is_active, dep}, {}, true);
+
   auto iter = m_dep_depths.find(dep);
   if(iter == m_dep_depths.end())
     return false;
@@ -94,33 +85,42 @@ bool DependencySolver::recurse_add(std::set<std::pair<int, depnodeptr>>& superse
   if(depth == posix::error_response)
     return false; // dep has unmet dependencies
 
-  for(auto subdep : selector(dep).requirement)
-    if(!recurse_add(superset, subdep, selector))
-      return false; // one of the required dependencies is unmet
+  if(!superset.emplace(depth, dep).second)
+    return false; // dep already exists
+
+  for(auto& subdep : dep->dep_nodes)
+    if(is_active && !recurse_add(superset, subdep.data, is_active))  // if required AND have an unmet dependency
+      return false; // fail
 
   std::set<std::pair<int, depnodeptr>> subset;
-  for(auto subdep : selector(dep).enhancement)
+  for(auto& subdep : dep->dep_nodes)
   {
     subset.clear();
-    if(recurse_add(subset, subdep, selector)) // if no bad unmet dependencies found
+    subset.emplace(depth, dep);
+    if(!is_active && recurse_add(subset, subdep.data, is_active)) // if optional AND have no unmet dependencies
       for(auto subsubdep : subset) // incorporate subset into superset
         superset.emplace(subsubdep);
   }
 
    // all required dependencies have been met!
-  superset.emplace(depth, dep);
   return true;
 }
 
 void DependencySolver::resolveDependencies(void) noexcept
 {
+  const bool active = true;
+  const bool inactive = false;
+  const bool requirement = true;
+  const bool enhancement = false;
+
   // temporary caches
   std::set<depnodeptr> all_deps;
   std::map<std::string, depnodeptr> dep_by_daemon;
   std::map<std::string, depnodeptr> dep_by_service;
 
   // clear existing data
-  m_orders.clear(); // previously ordered
+  m_orders_start.clear(); // previously ordered
+  m_orders_stop.clear(); // previously ordered
   m_errors.clear(); // clear error messages
 
   // create node of each config
@@ -133,6 +133,12 @@ void DependencySolver::resolveDependencies(void) noexcept
     auto get_set = [this, configname](const std::string& source)
                      { return clean_explode(getConfigData(configname, source), LIST_DELIM); };
 
+    auto merge_in = [](depinfoset_t<std::string>& dest, const std::set<std::string> source, bool is_required, bool is_active)
+    {
+      for(const auto& str : source)
+        dest.emplace(depinfo_t<std::string>{is_required, is_active, str});
+    };
+
     auto& node = dep_by_daemon.at(configname);
     all_deps.emplace(node);
 
@@ -141,30 +147,15 @@ void DependencySolver::resolveDependencies(void) noexcept
     for(const std::string& service  : node->service_names)
       dep_by_service.emplace(service, node);
 
-    node->dep_services =
-      {
-        { // active
-          get_set("/Requirements/ActiveServices"  ), // requirement
-          get_set("/Enhancements/ActiveServices"  ), // enhancement
-        },
-        { // inactive
-          get_set("/Requirements/InactiveServices"), // requirement
-          get_set("/Enhancements/InactiveServices"), // enhancement
-        },
-      };
+    merge_in(node->dep_services, get_set("/Requirements/ActiveServices"  ), requirement, active  );
+    merge_in(node->dep_services, get_set("/Enhancements/ActiveServices"  ), enhancement, active  );
+    merge_in(node->dep_services, get_set("/Requirements/InactiveServices"), requirement, inactive);
+    merge_in(node->dep_services, get_set("/Enhancements/InactiveServices"), enhancement, inactive);
 
-    node->dep_daemons =
-      {
-        { // active
-          get_set("/Requirements/ActiveDaemons"   ), // requirement
-          get_set("/Enhancements/ActiveDaemons"   ), // enhancement
-        },
-        { // inactive
-          get_set("/Requirements/InactiveDaemons" ), // requirement
-          get_set("/Enhancements/InactiveDaemons" ), // enhancement
-        },
-      };
-
+    merge_in(node->dep_daemons , get_set("/Requirements/ActiveDaemons"   ), requirement, active  );
+    merge_in(node->dep_daemons , get_set("/Enhancements/ActiveDaemons"   ), enhancement, active  );
+    merge_in(node->dep_daemons , get_set("/Requirements/InactiveDaemons" ), requirement, inactive);
+    merge_in(node->dep_daemons , get_set("/Enhancements/InactiveDaemons" ), enhancement, inactive);
 
     for(const std::string& rl_alias : get_set("/Requirements/StartOnRunLevels" ))
     {
@@ -187,53 +178,56 @@ void DependencySolver::resolveDependencies(void) noexcept
   for(auto& configname : getConfigList())
   {
     auto& node = dep_by_daemon.at(configname);
-    for(const std::string& service : node->dep_services.active  .requirement) { if(dep_by_service.find(service) == dep_by_service.end()) { queueErrorMessage(service, "service.active.requirement"  , "unresolved"); } else { node->dep_nodes.active.requirement.emplace(dep_by_service.at(service)); } }
-    for(const std::string& service : node->dep_services.active  .enhancement) { if(dep_by_service.find(service) == dep_by_service.end()) { queueErrorMessage(service, "service.active.enhancement"  , "unresolved"); } else { node->dep_nodes.active.enhancement.emplace(dep_by_service.at(service)); } }
-    for(const std::string& daemon  : node->dep_daemons .active  .requirement) { if(dep_by_daemon .find(daemon ) == dep_by_daemon .end()) { queueErrorMessage(daemon , "daemon.active.requirement"   , "unresolved"); } else { node->dep_nodes.active.requirement.emplace(dep_by_daemon .at(daemon )); } }
-    for(const std::string& daemon  : node->dep_daemons .active  .enhancement) { if(dep_by_daemon .find(daemon ) == dep_by_daemon .end()) { queueErrorMessage(daemon , "daemon.active.enhancement"   , "unresolved"); } else { node->dep_nodes.active.enhancement.emplace(dep_by_daemon .at(daemon )); } }
-    for(const std::string& service : node->dep_services.inactive.requirement) { if(dep_by_service.find(service) == dep_by_service.end()) { queueErrorMessage(service, "service.inactive.requirement", "unresolved"); } else { dep_by_service.at(service)->dep_nodes.inactive.requirement.emplace(node); } }
-    for(const std::string& service : node->dep_services.inactive.enhancement) { if(dep_by_service.find(service) == dep_by_service.end()) { queueErrorMessage(service, "service.inactive.enhancement", "unresolved"); } else { dep_by_service.at(service)->dep_nodes.inactive.enhancement.emplace(node); } }
-    for(const std::string& daemon  : node->dep_daemons .inactive.requirement) { if(dep_by_daemon .find(daemon ) == dep_by_daemon .end()) { queueErrorMessage(daemon , "daemon.inactive.requirement" , "unresolved"); } else { dep_by_daemon .at(daemon )->dep_nodes.inactive.requirement.emplace(node); } }
-    for(const std::string& daemon  : node->dep_daemons .inactive.enhancement) { if(dep_by_daemon .find(daemon ) == dep_by_daemon .end()) { queueErrorMessage(daemon , "daemon.inactive.enhancement" , "unresolved"); } else { dep_by_daemon .at(daemon )->dep_nodes.inactive.enhancement.emplace(node); } }
+    for(const depinfo_t<std::string>& service : node->dep_services)
+    {
+      auto inverse_dep = dep_by_service.find(service.data);
+      if(inverse_dep == dep_by_service.end())
+        queueErrorMessage(service.data, "service." + active_string(service.is_active) + "." + required_string(service.is_required), "unresolved");
+      else if(service.is_active)
+        node->dep_nodes.emplace(depinfo_t<depnodeptr>{ service.is_required, service.is_active, inverse_dep->second });
+      else
+        inverse_dep->second->dep_nodes.emplace(depinfo_t<depnodeptr>{ service.is_required, service.is_active, node });
+    }
+
+    for(const depinfo_t<std::string>& daemon : node->dep_daemons)
+    {
+      auto inverse_dep = dep_by_daemon.find(daemon.data);
+      if(inverse_dep == dep_by_daemon.end())
+        queueErrorMessage(daemon.data, "daemon." + active_string(daemon.is_active) + "." + required_string(daemon.is_required), "unresolved");
+      else if(daemon.is_active)
+        node->dep_nodes.emplace(depinfo_t<depnodeptr>{ daemon.is_required, daemon.is_active, inverse_dep->second });
+      else
+        inverse_dep->second->dep_nodes.emplace(depinfo_t<depnodeptr>{ daemon.is_required, daemon.is_active, node });
+    }
   }
 
 //=== begin resolution ===
 
   // find depths of all daemons
   for(auto& dep : all_deps)
-    m_dep_depths.emplace(dep, dep_depth(dep, std::set<depnodeptr>(), std::set<depnodeptr>()));
+    m_dep_depths.emplace(dep, dep_depth(dep, depinfo_t<depnodeptr>{requirement, active, dep}, {}, true));
 
   // build a list of to start/stop daemons for each runlevel
-
-  std::function<depsets_t<depnodeptr>&(depnodeptr)> active   = [](depnodeptr dep) noexcept ->depsets_t<depnodeptr>& { return dep->dep_nodes.active;   };
-  std::function<depsets_t<depnodeptr>&(depnodeptr)> inactive = [](depnodeptr dep) noexcept ->depsets_t<depnodeptr>& { return dep->dep_nodes.inactive; };
-
   for(auto& dep : all_deps)
   {
     for(uint8_t rl : dep->runlevel_start)
-      if(!recurse_add(m_orders[rl].active, dep, active)) // add all dependencies to the map of starting orders
+      if(!recurse_add(m_orders_start[rl], dep, active)) // add all dependencies to the map of starting orders
         queueErrorMessage(dep->daemon_name, "runlevel." + std::to_string(rl) + ".active", "add failed");
 
     for(uint8_t rl : dep->runlevel_stop)
-      if(!recurse_add(m_orders[rl].inactive, dep, inactive)) // add all dependencies to the map of stopping orders
+      if(!recurse_add(m_orders_stop[rl], dep, inactive)) // add all dependencies to the map of stopping orders
         queueErrorMessage(dep->daemon_name, "runlevel." + std::to_string(rl) + ".inactive", "add failed");
   }
 
   // destroy all cached data
   m_dep_depths.clear();
   for(auto& dep : all_deps)
-  {
-    dep->dep_nodes.active.requirement.clear();
-    dep->dep_nodes.active.enhancement.clear();
-    dep->dep_nodes.inactive.requirement.clear();
-    dep->dep_nodes.inactive.enhancement.clear();
-  }
+    dep->dep_nodes.clear();
 }
 
 start_stop_t DependencySolver::getRunlevelOrder(const std::string& runlevel) const noexcept
 {
   start_stop_t data;
-
   int rlnum = getRunlevel(runlevel);
   if(rlnum != posix::error_response)
   {
@@ -241,23 +235,23 @@ start_stop_t DependencySolver::getRunlevelOrder(const std::string& runlevel) con
     data.start.reserve(64);
     data.stop .reserve(64);
 
-    auto order_iter = m_orders.find(data.runlevel); // find the data for the runlevel
-    if(order_iter != m_orders.end()) // ensure that the data was found
-    {
-      for(auto& pair : order_iter->second.active)
+    auto order_start_iter = m_orders_start.find(data.runlevel); // find the data for the runlevel
+    if(order_start_iter != m_orders_start.end()) // ensure that the data was found
+      for(auto& pair : order_start_iter->second)
       {
         if(data.start.size() < posix::size_t(pair.first + 1))
           data.start.resize(pair.first + 1);
         data.start.at(pair.first).emplace_back(pair.second->daemon_name); // add daemon to ordered list
       }
 
-      for(auto& pair : order_iter->second.inactive)
+    auto order_stop_iter = m_orders_stop.find(data.runlevel); // find the data for the runlevel
+    if(order_stop_iter != m_orders_stop.end()) // ensure that the data was found
+      for(auto& pair : order_stop_iter->second)
       {
         if(data.stop.size() < posix::size_t(pair.first + 1))
           data.stop.resize(pair.first + 1);
         data.stop.at(pair.first).emplace_back(pair.second->daemon_name); // add daemon to ordered list
       }
-    }
   }
   return data; // return ordered list of daemons to start/stop for this runlevel
 }
