@@ -34,7 +34,7 @@ static std::set<std::string> clean_explode(const std::string& str, char delim) n
   return strs;
 }
 
-int DependencySolver::queueErrorMessage(const std::string& context, const std::string& source, const std::string& problem) noexcept
+int DependencySolver::queueErrorMessage(const std::string& context, const std::string& source, const std::string& problem) const noexcept
 {
   m_errors.emplace_back(context);
   m_errors.back()
@@ -46,7 +46,7 @@ int DependencySolver::queueErrorMessage(const std::string& context, const std::s
 static inline std::string active_string(bool is_active) { return is_active ? "active" : "inactive"; }
 static inline std::string required_string(bool is_required) { return is_required ? "requirement" : "enhancement"; }
 
-int DependencySolver::dep_depth(depnodeptr origin, depinfo_t<depnodeptr> dep, depinfoset_t<depnodeptr> path, bool mandatory) noexcept
+int DependencySolver::dep_depth(depnodeptr origin, depinfo_t<depnodeptr> dep, depinfoset_t<depnodeptr> path, bool mandatory) const noexcept
 {
   int max_depth = 0;
 
@@ -71,7 +71,7 @@ int DependencySolver::dep_depth(depnodeptr origin, depinfo_t<depnodeptr> dep, de
   return max_depth + 1;
 }
 
-bool DependencySolver::recurse_add(std::set<std::pair<int, depnodeptr>>& superset, depnodeptr dep, bool is_active) noexcept
+bool DependencySolver::recurse_add(std::set<std::pair<int, depnodeptr>>& superset, depnodeptr dep, bool is_active) const noexcept
 {
   auto iter = m_dep_depths.find(dep);
   if(iter == m_dep_depths.end())

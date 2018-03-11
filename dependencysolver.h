@@ -33,8 +33,8 @@ public:
   std::list<std::string> getErrorMessages(void) const noexcept { return m_errors; }
 
 private:
-  int queueErrorMessage(const std::string& context, const std::string& source, const std::string& problem) noexcept;
-  std::list<std::string> m_errors;
+  int queueErrorMessage(const std::string& context, const std::string& source, const std::string& problem) const noexcept;
+  mutable std::list<std::string> m_errors; // allow error logging in const functions!
 
   struct depnode_t;
   using depnodeptr = std::shared_ptr<depnode_t>;
@@ -70,8 +70,8 @@ private:
   std::map<uint8_t, runlevelorder_t> m_orders_start; // the daemon starting order by runlevels
   std::map<uint8_t, runlevelorder_t> m_orders_stop; // the daemon stopping order by runlevels
 
-  int dep_depth(depnodeptr origin, depinfo_t<depnodeptr> dep, depinfoset_t<depnodeptr> path, bool mandatory) noexcept;
-  bool recurse_add(std::set<std::pair<int, depnodeptr>>& subset, depnodeptr dep, bool active) noexcept;
+  int dep_depth(depnodeptr origin, depinfo_t<depnodeptr> dep, depinfoset_t<depnodeptr> path, bool mandatory) const noexcept;
+  bool recurse_add(std::set<std::pair<int, depnodeptr>>& subset, depnodeptr dep, bool active) const noexcept;
 };
 
 #endif // DEPENDENCYSOLVER_H
