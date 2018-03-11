@@ -69,14 +69,10 @@ int DependencySolver::dep_depth(depnodeptr origin, depinfo_t<depnodeptr> dep, de
   }
 
   return max_depth + 1;
-  //return m_dep_depths.emplace(dep.data, max_depth + 1).first->second; // add one to include self
 }
 
 bool DependencySolver::recurse_add(std::set<std::pair<int, depnodeptr>>& superset, depnodeptr dep, bool is_active) noexcept
 {
-  const bool requirement = true;
-//  int depth = dep_depth(dep, depinfo_t<depnodeptr>{requirement, is_active, dep}, {}, true);
-
   auto iter = m_dep_depths.find(dep);
   if(iter == m_dep_depths.end())
     return false;
