@@ -20,7 +20,7 @@ class DirectorCore : public Object,
 {
 public:
   DirectorCore(uid_t euid, gid_t egid, posix::fd_t shmemid = posix::invalid_descriptor) noexcept; // take shared memory identifier from previous instance
- ~DirectorCore(void) noexcept;
+  virtual ~DirectorCore(void) noexcept;
 
   bool    setRunLevel(const std::string& rlname) noexcept;
   uint8_t getRunlevel(void) const noexcept { return m_runlevel; }
@@ -38,7 +38,7 @@ private:
   int getRunlevel(const std::string& rlname) const noexcept;
 
   ConfigClient m_config_client;
-  DirectorConfigClient m_director_client;
+  DirectorConfigClient m_director_config_client;
   uid_t m_euid;
   gid_t m_egid;
 };
