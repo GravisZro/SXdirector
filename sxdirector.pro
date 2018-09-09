@@ -14,7 +14,7 @@ QMAKE_CXXFLAGS += -fno-exceptions
 QMAKE_CXXFLAGS += -fno-rtti
 QMAKE_CXXFLAGS += -fno-threadsafe-statics
 DEFINES += INTERRUPTED_WRAPPER
-
+LIBS += -lrt
 #LIBS += -lpthread
 experimental {
 #QMAKE_CXXFLAGS += -stdlib=libc++
@@ -37,9 +37,7 @@ SOURCES = main.cpp \
     jobcontroller.cpp \
     dependencysolver.cpp \
     $$PDTK/application.cpp \
-    $$PDTK/process.cpp \
     $$PDTK/socket.cpp \
-    $$PDTK/asyncfd.cpp \
     $$PDTK/cxxutils/configmanip.cpp \
     $$PDTK/specialized/peercred.cpp \
     $$PDTK/specialized/procstat.cpp \
@@ -47,7 +45,8 @@ SOURCES = main.cpp \
     $$PDTK/specialized/eventbackend.cpp \
     $$PDTK/specialized/FileEvent.cpp \
     $$PDTK/specialized/PollEvent.cpp \
-    $$PDTK/specialized/ProcessEvent.cpp
+    $$PDTK/specialized/ProcessEvent.cpp \
+    $$PDTK/specialized/TimerEvent.cpp
 
 HEADERS +=  \
     directorcore.h \
@@ -57,9 +56,7 @@ HEADERS +=  \
     dependencysolver.h \
     $$PDTK/object.h \
     $$PDTK/application.h \
-    $$PDTK/process.h \
     $$PDTK/socket.h \
-    $$PDTK/asyncfd.h \
     $$PDTK/cxxutils/vfifo.h \
     $$PDTK/cxxutils/posix_helpers.h \
     $$PDTK/cxxutils/socket_helpers.h \
@@ -77,4 +74,5 @@ HEADERS +=  \
     $$PDTK/specialized/eventbackend.h \
     $$PDTK/specialized/FileEvent.h \
     $$PDTK/specialized/PollEvent.h \
-    $$PDTK/specialized/ProcessEvent.h
+    $$PDTK/specialized/ProcessEvent.h \
+    $$PDTK/specialized/TimerEvent.h
