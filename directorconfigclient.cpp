@@ -47,7 +47,7 @@
 
 static const char* extract_daemon_name(const char* filename)
 {
-  char daemon[NAME_MAX];
+  char daemon[NAME_MAX] = { 0 };
   const char* start = std::strrchr(filename, '/');
   const char* end   = std::strrchr(filename, '.');
 
