@@ -23,6 +23,8 @@ struct start_stop_t
 class DependencySolver
 {
 public:
+  inline virtual ~DependencySolver(void) noexcept = default;
+
   void resolveDependencies(void) noexcept;
   start_stop_t getRunlevelOrder(const std::string& runlevel) const noexcept;
 
