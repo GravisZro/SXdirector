@@ -52,7 +52,7 @@ DirectorCore::DirectorCore(uid_t euid, gid_t egid, posix::fd_t shmemid) noexcept
   }
 
   Object::connect(m_config_client.synchronized, this, &DirectorCore::reloadSettings);
-  Object::connect(m_director_client.synchronized, this, &DirectorCore::reloadSettings);
+  Object::connect(m_director_config_client.synchronized, this, &DirectorCore::reloadSettings);
 }
 
 DirectorCore::~DirectorCore(void) noexcept
@@ -61,12 +61,12 @@ DirectorCore::~DirectorCore(void) noexcept
 
 const std::string& DirectorCore::getConfigData(const std::string& config, const std::string& key) const noexcept
 {
-  return m_director_client.get(config, key);
+  return m_director_config_client.get(config, key);
 }
 
 std::list<std::string> DirectorCore::getConfigList(void) const noexcept
 {
-  return m_director_client.listConfigs();
+  return m_director_config_client.listConfigs();
 }
 
 
@@ -84,6 +84,8 @@ bool DirectorCore::setRunLevel(const std::string& rlname) noexcept
     return false;
 
   start_stop_t ssorder = getRunlevelOrder(rlname);
+
+  // TODO
 
   return true;
 }
@@ -135,7 +137,7 @@ static bool starts_with(const char* seek, const std::string& str) noexcept
 void DirectorCore::reloadSettings(void) noexcept
 {
   if(m_config_client.isSynchronized() &&
-     m_director_client.isSynchronized())
+     m_director_config_client.isSynchronized())
   {
     // destroy all existing data
     m_runlevel_aliases.clear();
