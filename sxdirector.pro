@@ -9,12 +9,26 @@ CONFIG -= c++14
 
 # universal arguments
 QMAKE_CXXFLAGS += -std=c++14
-QMAKE_CXXFLAGS += -Os
+QMAKE_CXXFLAGS += -pipe -Os
 QMAKE_CXXFLAGS += -fno-exceptions
 QMAKE_CXXFLAGS += -fno-rtti
+
 QMAKE_CXXFLAGS += -fno-threadsafe-statics
-DEFINES += INTERRUPTED_WRAPPER
+QMAKE_CXXFLAGS += -fno-asynchronous-unwind-tables
+#QMAKE_CXXFLAGS += -fstack-protector-all
+QMAKE_CXXFLAGS += -fstack-protector-strong
+
+# optimizations
+QMAKE_CXXFLAGS += -fdata-sections
+QMAKE_CXXFLAGS += -ffunction-sections
+QMAKE_LFLAGS += -Wl,--gc-sections
+
+# libraries
 LIBS += -lrt
+
+# defines
+DEFINES += INTERRUPTED_WRAPPER
+
 #LIBS += -lpthread
 experimental {
 #QMAKE_CXXFLAGS += -stdlib=libc++
@@ -46,7 +60,15 @@ SOURCES = main.cpp \
     $$PDTK/specialized/FileEvent.cpp \
     $$PDTK/specialized/PollEvent.cpp \
     $$PDTK/specialized/ProcessEvent.cpp \
-    $$PDTK/specialized/TimerEvent.cpp
+    $$PDTK/specialized/TimerEvent.cpp \
+    $$PDTK/tui/widget.cpp \
+    $$PDTK/tui/window.cpp \
+    $$PDTK/tui/screen.cpp \
+    $$PDTK/tui/tuiutils.cpp \
+    $$PDTK/tui/layout.cpp \
+    $$PDTK/tui/layoutitem.cpp \
+    $$PDTK/tui/event.cpp \
+    $$PDTK/tui/keyboard.cpp
 
 HEADERS +=  \
     directorcore.h \
@@ -75,4 +97,14 @@ HEADERS +=  \
     $$PDTK/specialized/FileEvent.h \
     $$PDTK/specialized/PollEvent.h \
     $$PDTK/specialized/ProcessEvent.h \
-    $$PDTK/specialized/TimerEvent.h
+    $$PDTK/specialized/TimerEvent.h \
+    $$PDTK/tui/widget.h \
+    $$PDTK/tui/window.h \
+    $$PDTK/tui/screen.h \
+    $$PDTK/tui/tuiutils.h \
+    $$PDTK/tui/layout.h \
+    $$PDTK/tui/layoutitem.h \
+    $$PDTK/tui/tuitypes.h \
+    $$PDTK/tui/sizepolicy.h \
+    $$PDTK/tui/event.h \
+    $$PDTK/tui/keyboard.h

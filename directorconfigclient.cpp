@@ -35,7 +35,7 @@
 #endif
 
 
-#define NO_CONNECTION_TO_CONFIGURATION_DAEMON   0x10
+#define NO_CONNECTION_TO_CONFIGURATION_PROVIDER 0x10
 #define UNABLE_TO_READ_CONFIGURATION_DIRECTORY  0x11
 #define UNABLE_TO_READ_CONFIGURATION            0x11
 #define UNABLE_TO_PARSE_CONFIGURATION           0x12
@@ -45,9 +45,9 @@
 #include <cxxutils/configmanip.h>
 
 
-static const char* extract_daemon_name(const char* filename)
+static const char* extract_provider_name(const char* filename)
 {
-  char daemon[NAME_MAX] = { 0 };
+  char provider[NAME_MAX] = { 0 };
   const char* start = std::strrchr(filename, '/');
   const char* end   = std::strrchr(filename, '.');
 
@@ -56,7 +56,7 @@ static const char* extract_daemon_name(const char* filename)
      end < start || // occur in the incorrect order OR
      std::strcmp(end, ".conf")) // doesn't end with ".conf"
     return nullptr;
-  return std::strncpy(daemon, start + 1, posix::size_t(end - start + 1)); // extract daemon name
+  return std::strncpy(provider, start + 1, posix::size_t(end - start + 1)); // extract provider name
 }
 
 static const char* director_configfilename(const char* filename)
@@ -75,7 +75,11 @@ static bool readconfig(const char* name, std::string& buffer)
 
   if(file == nullptr)
   {
-    posix::syslog << posix::priority::warning << "Unable to open file: " << name << " : " << std::strerror(errno) << posix::eom;
+    posix::syslog << posix::priority::warning
+                  << "Unable to open file: %1 : %2"
+                  << name
+                  << std::strerror(errno)
+                  << posix::eom;
     return false;
   }
 
@@ -132,22 +136,36 @@ void DirectorConfigClient::resync(posix::error_t errcode) noexcept
     if(try_connecting)
     {
       if(!isConnected())
-        posix::syslog << posix::priority::warning << "Unable to connect to " << (socket_file ? "socket file" : "anonymous socket") << DIRECTOR_IO_SOCKET << posix::eom;
+        posix::syslog << posix::priority::warning
+                      << "Unable to connect to %1 %2"
+                      << (socket_file ? "socket file" : "anonymous socket")
+                      << DIRECTOR_IO_SOCKET
+                      << posix::eom;
       else
-        posix::syslog << posix::priority::warning << "Connection error for " << (socket_file ? "socket file" : "anonymous socket") << DIRECTOR_IO_SOCKET << ": " << std::strerror(errno) << posix::eom;
+        posix::syslog << posix::priority::warning
+                      << "Connection error for %1 %2 : %3"
+                      << (socket_file ? "socket file" : "anonymous socket")
+                      << DIRECTOR_IO_SOCKET
+                      << std::strerror(errno)
+                      << posix::eom;
     }
 #ifdef NO_CONFIG_FALLBACK
-    Application::quit(NO_CONNECTION_TO_CONFIGURATION_DAEMON);
+    Application::quit(NO_CONNECTION_TO_CONFIGURATION_PROVIDER);
 #else
-    posix::syslog << posix::priority::warning << "Continuing without configuration daemon connection for Director.  Falling back on direct file access." << posix::eom;
+    posix::syslog << posix::priority::warning
+                  << "Continuing without configuration provider connection for Director.  Falling back on direct file access."
+                  << posix::eom;
 
     DIR* dir = ::opendir(DIRECTOR_CONFIG_PATH);
     dirent* entry = nullptr;
-    const char* daemon = nullptr;
+    const char* provider = nullptr;
     const char* filename = nullptr;
     if(dir == nullptr)
     {
-      posix::syslog << posix::priority::critical << "Unable to read directory of Director configuation files: " << DIRECTOR_CONFIG_PATH << posix::eom;
+      posix::syslog << posix::priority::critical
+                    << "Unable to read directory of Director configuation files: %1"
+                    << DIRECTOR_CONFIG_PATH
+                    << posix::eom;
       Application::quit(UNABLE_TO_READ_CONFIGURATION_DIRECTORY);
     }
     else
@@ -160,24 +178,31 @@ void DirectorConfigClient::resync(posix::error_t errcode) noexcept
         if(entry->d_name[0] == '.') // skip dot files/dirs
           continue;
 
-        if((daemon   = extract_daemon_name    (entry->d_name)) == nullptr || // if daemon name extraction failed OR
+        if((provider = extract_provider_name  (entry->d_name)) == nullptr || // if provider name extraction failed OR
            (filename = director_configfilename(entry->d_name)) == nullptr) // failed to build filename
           continue; // skip file
 
         tmp_config.clear();
         if(!readconfig(filename, buffer))
         {
-          posix::syslog << posix::priority::critical << "Unable to read Director daemon configuation file: " << filename << ": " << std::strerror(errno) << posix::eom;
+          posix::syslog << posix::priority::critical
+                        << "Unable to read Director configuation file: %1 : %2"
+                        << filename
+                        << std::strerror(errno)
+                        << posix::eom;
           Application::quit(UNABLE_TO_READ_CONFIGURATION);
         }
         else if(!tmp_config.importText(buffer))
         {
-          posix::syslog << posix::priority::critical << "Parsing failed will processing Director daemon configuation file: " << filename << posix::eom;
+          posix::syslog << posix::priority::critical
+                        << "Parsing failed will processing Director configuation file: %1"
+                        << filename
+                        << posix::eom;
           Application::quit(UNABLE_TO_PARSE_CONFIGURATION);
         }
         else // no errors! :)
         {
-          tmp_config.exportKeyPairs(m_data[daemon]);
+          tmp_config.exportKeyPairs(m_data[provider]);
         }
       }
       m_sync = true;

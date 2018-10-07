@@ -29,7 +29,9 @@
 void exiting(void) noexcept
 {
   printf("exiting\n");
-  posix::syslog << posix::priority::notice << "daemon has exited." << posix::eom;
+  posix::syslog << posix::priority::notice
+                << "program has exited."
+                << posix::eom;
 }
 
 int main(int argc, char *argv[]) noexcept
@@ -37,13 +39,13 @@ int main(int argc, char *argv[]) noexcept
   uid_t euid = posix::geteuid();
   gid_t egid = posix::getegid();
   std::atexit(exiting);
-  posix::syslog.open(DIRECTOR_APP_NAME, posix::facility::daemon);
+  posix::syslog.open(DIRECTOR_APP_NAME, posix::facility::provider);
 
 #if 0 && defined(POSIX_DRAFT_1E)
   if(::prctl(PR_SET_KEEPCAPS, 1) != posix::success_response)
   {
     posix::syslog << posix::priority::error
-                  << "Director daemon must be launched with the ability to manipulate process capabilities"
+                  << "Director must be launched with the ability to manipulate process capabilities"
                   << posix::eom;
     std::exit(int(std::errc::permission_denied));
   }
@@ -51,7 +53,10 @@ int main(int argc, char *argv[]) noexcept
   capability_data_t caps;
 
   if(::capget(caps, caps))
-    posix::syslog << posix::priority::critical << "Failed to get capabilities: " << std::strerror(errno) << posix::eom;
+    posix::syslog << posix::priority::critical
+                  << "Failed to get capabilities: %1"
+                  << std::strerror(errno)
+                  << posix::eom;
 
   caps.effective
       .set(capflag::kill) // for killing the processes being supervised
@@ -63,7 +68,10 @@ int main(int argc, char *argv[]) noexcept
   caps.inheritable = caps.effective;
 
   if(::capset(caps, caps) != posix::success_response)
-    posix::syslog << posix::priority::critical << "Failed to set capabilities: " << std::strerror(errno) << posix::eom;
+    posix::syslog << posix::priority::critical
+                  << "Failed to set capabilities: %1"
+                  << std::strerror(errno)
+                  << posix::eom;
 #endif
 
   if((std::strcmp(posix::getgroupname(egid), DIRECTOR_GROUPNAME) && // if current effective group name is NOT what we want AND
@@ -72,9 +80,8 @@ int main(int argc, char *argv[]) noexcept
       !posix::seteuid(posix::getuserid (DIRECTOR_USERNAME)))) // unable to change effective user id
   {
     posix::syslog << posix::priority::error
-                  << "Director daemon must be launched as user/group "
-                  << '"' << DIRECTOR_USERNAME << '"'
-                  << " or have permissions to seteuid/setegid"
+                  << "Director must be launched as user/group \"%1\" or have permissions to seteuid/setegid"
+                  << DIRECTOR_USERNAME
                   << posix::eom;
     std::exit(posix::error_t(std::errc::permission_denied));
   }
@@ -87,10 +94,9 @@ int main(int argc, char *argv[]) noexcept
   if(argc > 1 && std::atoi(argv[1]))
     shmemid = std::atoi(argv[1]);
   DirectorCore core(euid, egid, shmemid);
-  (void)core;
 
-  static std::function<void(void)> reload = [&core](){ core.reloadBinary(); }; // function to invoke program reload
-  std::signal(SIGINT, [](int){ Object::singleShot(reload); }); // queue function to invoke program reload
+  static std::function<void(void)> reload = [&core]() noexcept { core.reloadBinary(); }; // function to invoke program reload
+  std::signal(SIGINT, [](int) noexcept { Object::singleShot(reload); }); // queue function to invoke program reload
 
   return app.exec();
 }

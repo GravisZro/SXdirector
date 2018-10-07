@@ -34,7 +34,7 @@
 #endif
 
 
-#define NO_CONNECTION_TO_CONFIGURATION_DAEMON   0x10
+#define NO_CONNECTION_TO_CONFIGURATION_PROVIDER 0x10
 #define UNABLE_TO_READ_CONFIGURATION            0x11
 #define UNABLE_TO_PARSE_CONFIGURATION           0x12
 
@@ -47,7 +47,11 @@ static bool readconfig(const char* name, std::string& buffer) noexcept
 
   if(file == nullptr)
   {
-    posix::syslog << posix::priority::warning << "Unable to open file: " << name << " : " << std::strerror(errno) << posix::eom;
+    posix::syslog << posix::priority::warning
+                  << "Unable to open file: %1 : %2"
+                  << name
+                  << std::strerror(errno)
+                  << posix::eom;
     return false;
   }
 
@@ -96,25 +100,43 @@ void ConfigClient::resync(posix::error_t errcode) noexcept
     if(try_connecting)
     {
       if(!isConnected())
-        posix::syslog << posix::priority::warning << "Unable to connect to " << (socket_file ? "socket file" : "anonymous socket") << CONFIG_IO_SOCKET << posix::eom;
+        posix::syslog << posix::priority::warning
+                      << "Unable to connect to %1 %2"
+                      << (socket_file ? "socket file" : "anonymous socket")
+                      << CONFIG_IO_SOCKET
+                      << posix::eom;
       else
-        posix::syslog << posix::priority::warning << "Connection error for " << (socket_file ? "socket file" : "anonymous socket") << CONFIG_IO_SOCKET << ": " << std::strerror(errno) << posix::eom;
+        posix::syslog << posix::priority::warning
+                      << "Connection error for %1 %2 : %3"
+                      << (socket_file ? "socket file" : "anonymous socket")
+                      << CONFIG_IO_SOCKET
+                      << std::strerror(errno)
+                      << posix::eom;
     }
 #ifdef NO_CONFIG_FALLBACK
-    Application::quit(NO_CONNECTION_TO_CONFIGURATION_DAEMON);
+    Application::quit(NO_CONNECTION_TO_CONFIGURATION_PROVIDER);
 #else
-    posix::syslog << posix::priority::warning << "Continuing without configuration daemon connection.  Falling back on direct file access." << posix::eom;
+    posix::syslog << posix::priority::warning
+                  << "Continuing without configuration provider connection.  Falling back on direct file access."
+                  << posix::eom;
 
     std::string buffer;
     ConfigManip tmp_config;
     if(!readconfig(CONFIG_CONFIG_PATH "/" DIRECTOR_CONFIG_FILE, buffer))
     {
-      posix::syslog << posix::priority::critical << "Unable to read Director daemon configuation file: " << (CONFIG_CONFIG_PATH "/" DIRECTOR_CONFIG_FILE) << ": " << std::strerror(errno) << posix::eom;
+      posix::syslog << posix::priority::critical
+                    << "Unable to read Director provider configuation file: %1 : %2"
+                    << (CONFIG_CONFIG_PATH "/" DIRECTOR_CONFIG_FILE)
+                    << std::strerror(errno)
+                    << posix::eom;
       Application::quit(UNABLE_TO_READ_CONFIGURATION);
     }
     else if(!tmp_config.importText(buffer))
     {
-      posix::syslog << posix::priority::critical << "Parsing failed will processing Director daemon configuation file: " << (CONFIG_CONFIG_PATH "/" DIRECTOR_CONFIG_FILE) << posix::eom;
+      posix::syslog << posix::priority::critical
+                    << "Parsing failed will processing Director provider configuation file: %1"
+                    << (CONFIG_CONFIG_PATH "/" DIRECTOR_CONFIG_FILE)
+                    << posix::eom;
       Application::quit(UNABLE_TO_PARSE_CONFIGURATION);
     }
     else // no errors! :)

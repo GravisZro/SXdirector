@@ -6,6 +6,9 @@
 // POSIX++
 #include <climits>
 
+// STL
+#include <string>
+
 // PDTK
 #include <cxxutils/syslogstream.h>
 #include <cxxutils/vterm.h>
@@ -70,17 +73,17 @@ std::list<std::string> DirectorCore::getConfigList(void) const noexcept
 }
 
 
-int DirectorCore::getRunlevel(const std::string& rlname) const noexcept
+DependencySolver::runlevel_t DirectorCore::getRunlevelNumber(const std::string& rlname) const noexcept
 {
   auto iter = m_runlevel_aliases.find(rlname);
   if(iter == m_runlevel_aliases.end())
-    return posix::error_response;
+    return invalid_runlevel;
   return iter->second;
 }
 
-bool DirectorCore::setRunLevel(const std::string& rlname) noexcept
+bool DirectorCore::setRunlevel(const std::string& rlname) noexcept
 {
-  if(getRunlevel(rlname) == posix::error_response)
+  if(getRunlevelNumber(rlname) == invalid_runlevel)
     return false;
 
   start_stop_t ssorder = getRunlevelOrder(rlname);
@@ -113,7 +116,9 @@ void DirectorCore::reloadBinary(void) noexcept
   if(!posix::setegid(m_egid) || // unable to change effective group id
      !posix::seteuid(m_euid)) // unable to change effective user id
   {
-    posix::syslog << posix::priority::error << "Unable to restore effective UID and effective GID." << posix::eom;
+    posix::syslog << posix::priority::error
+                  << "Unable to restore effective UID and effective GID."
+                  << posix::eom;
     std::exit(posix::error_t(std::errc::permission_denied));
   }
 
@@ -142,17 +147,40 @@ void DirectorCore::reloadSettings(void) noexcept
     // destroy all existing data
     m_runlevel_aliases.clear();
 
-    // initialize runlevel aliases with numeric entries
-    for(uint16_t i = 0; i < 256; ++i)
-      m_runlevel_aliases.emplace(std::to_string(i), uint8_t(i));
-
     // add custom runlevel aliases
     for(auto& pair : m_config_client.data()) // check every config client entry
-      if(starts_with("/Runlevels/", pair.first) && // if this is a runlevel alias entry AND
-         m_runlevel_aliases.find(pair.second) != m_runlevel_aliases.end()) // it's a valid number (0 through 255) or an existing alias
-        m_runlevel_aliases.emplace(pair.first.substr(sizeof("/Runlevels/") - 1),  // add new alias (or ignore if already existing)
-                                   m_runlevel_aliases[pair.second]);
+    {
+      if(starts_with("/Runlevels/", pair.first)) // if this is a runlevel alias entry
+      {
+        runlevel_t rl = invalid_runlevel;
+        auto iter = m_runlevel_aliases.find(pair.second);
+        if(iter == m_runlevel_aliases.end()) // if runlevel value doesn't exist
+        {
+          bool numeric = true;
+          for(auto c : pair.second)
+            numeric &= std::isdigit(c);
+          if(numeric)
+           rl = runlevel_t(std::stoi(pair.second)); // attempt to convert to an unsigned number
+        }
+        else
+          rl = iter->second;
+
+        m_runlevel_aliases.emplace(pair.first.substr(sizeof("/Runlevels/") - 1), rl); // add new alias (or ignore if already existing)
+
+        if(rl == invalid_runlevel)
+          posix::syslog << posix::priority::warning
+                        << "Runlevel alias \"%1\" is invalide because runlevel alias \"%2\" is undefined or invalid."
+                        << pair.first.substr(sizeof("/Runlevels/") - 1)
+                        << pair.second
+                        << posix::eom;
+      }
+    }
 
     resolveDependencies();
+  }
+
+  if(m_runlevel.empty()) // runlevel is empty if the director was just just started
+  {
+    setRunlevel(m_config_client.get("/Settings/InitialRunlevel")); // switch to the initial runlevel
   }
 }
