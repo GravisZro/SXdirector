@@ -169,7 +169,7 @@ void DirectorCore::reloadSettings(void) noexcept
 
         if(rl == invalid_runlevel)
           posix::syslog << posix::priority::warning
-                        << "Runlevel alias \"%1\" is invalide because runlevel alias \"%2\" is undefined or invalid."
+                        << "Runlevel alias \"%1\" is invalid because runlevel alias \"%2\" is undefined or invalid."
                         << pair.first.substr(sizeof("/Runlevels/") - 1)
                         << pair.second
                         << posix::eom;

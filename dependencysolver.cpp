@@ -105,10 +105,10 @@ bool DependencySolver::recurse_add(std::set<std::pair<posix::size_t, depnodeptr>
 
 void DependencySolver::resolveDependencies(void) noexcept
 {
-  const bool active = true;
-  const bool inactive = false;
-  const bool requirement = true;
-  const bool enhancement = false;
+  constexpr bool active = true;
+  constexpr bool inactive = false;
+  constexpr bool requirement = true;
+  constexpr bool enhancement = false;
 
   // temporary caches
   std::set<depnodeptr> all_deps;

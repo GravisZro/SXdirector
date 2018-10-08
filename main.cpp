@@ -28,9 +28,8 @@
 
 void exiting(void) noexcept
 {
-  printf("exiting\n");
   posix::syslog << posix::priority::notice
-                << "program has exited."
+                << "Service management provider (Director) has exited."
                 << posix::eom;
 }
 
@@ -96,7 +95,13 @@ int main(int argc, char *argv[]) noexcept
   DirectorCore core(euid, egid, shmemid);
 
   static std::function<void(void)> reload = [&core]() noexcept { core.reloadBinary(); }; // function to invoke program reload
-  std::signal(SIGINT, [](int) noexcept { Object::singleShot(reload); }); // queue function to invoke program reload
+  std::signal(SIGINT, [](int) noexcept
+  {
+    posix::syslog << posix::priority::critical
+                  << "Signal interupt caught.  Service management provider (Director) is reloading."
+                  << posix::eom;
+    Object::singleShot(reload);
+  }); // queue function to invoke program reload
 
   return app.exec();
 }
