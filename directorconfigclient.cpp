@@ -13,25 +13,8 @@
 #define SCFS_PATH               "/svc"
 #endif
 
-#ifndef DIRECTOR_USERNAME
-#define DIRECTOR_USERNAME       "director"
-#endif
-
-#ifndef CONFIG_USERNAME
-#define CONFIG_USERNAME         "config"
-#endif
-
-#ifdef ANONYMOUS_SOCKET
-#undef ANONYMOUS_SOCKET
-#endif
-#define ANONYMOUS_SOCKET        "\0"
-
-#ifndef DIRECTOR_IO_SOCKET
-#define DIRECTOR_IO_SOCKET      SCFS_PATH "/" DIRECTOR_USERNAME "/io"
-#endif
-
-#ifndef DIRECTOR_CONFIG_PATH
-#define DIRECTOR_CONFIG_PATH  "/etc/director"
+#ifndef DIRECTOR_CONFIG_DIR
+#define DIRECTOR_CONFIG_DIR     "/etc/" DIRECTOR_USERNAME
 #endif
 
 
@@ -64,7 +47,7 @@ static const char* director_configfilename(const char* filename)
   // construct config filename
   static char fullpath[PATH_MAX];
   std::memset(fullpath, 0, PATH_MAX);
-  if(std::snprintf(fullpath, PATH_MAX, "%s/%s", DIRECTOR_CONFIG_PATH, filename) == posix::error_response) // I don't how this could fail
+  if(std::snprintf(fullpath, PATH_MAX, "%s/%s", DIRECTOR_CONFIG_DIR, filename) == posix::error_response) // I don't how this could fail
     return nullptr; // unable to build config filename
   return fullpath;
 }
@@ -118,8 +101,6 @@ void DirectorConfigClient::resync(posix::error_t errcode) noexcept
   if(isConnected())
     disconnect();
 
-  bool socket_file = use_socket_file(DIRECTOR_IO_SOCKET);
-
   bool try_connecting = true;
   if(errcode != posix::success_response) // if not the first connection attempt
   {
@@ -127,7 +108,7 @@ void DirectorConfigClient::resync(posix::error_t errcode) noexcept
   }
 
   if(try_connecting &&
-     connect(socket_file ? DIRECTOR_IO_SOCKET : ANONYMOUS_SOCKET DIRECTOR_IO_SOCKET) &&
+     connect(SCFS_PATH CONFIG_DIRECTOR_SOCKET) &&
      write(vfifo("RPC", "syncCall"), posix::invalid_descriptor)) // no errors!
   {
   }
@@ -137,15 +118,13 @@ void DirectorConfigClient::resync(posix::error_t errcode) noexcept
     {
       if(!isConnected())
         posix::syslog << posix::priority::warning
-                      << "Unable to connect to %1 %2"
-                      << (socket_file ? "socket file" : "anonymous socket")
-                      << DIRECTOR_IO_SOCKET
+                      << "Unable to connect to socket file %1"
+                      << SCFS_PATH CONFIG_DIRECTOR_SOCKET
                       << posix::eom;
       else
         posix::syslog << posix::priority::warning
-                      << "Connection error for %1 %2 : %3"
-                      << (socket_file ? "socket file" : "anonymous socket")
-                      << DIRECTOR_IO_SOCKET
+                      << "Connection error for socket file %1 : %2"
+                      << SCFS_PATH CONFIG_DIRECTOR_SOCKET
                       << std::strerror(errno)
                       << posix::eom;
     }
@@ -156,7 +135,7 @@ void DirectorConfigClient::resync(posix::error_t errcode) noexcept
                   << "Continuing without configuration provider connection for Director.  Falling back on direct file access."
                   << posix::eom;
 
-    DIR* dir = ::opendir(DIRECTOR_CONFIG_PATH);
+    DIR* dir = ::opendir(DIRECTOR_CONFIG_DIR);
     dirent* entry = nullptr;
     const char* provider = nullptr;
     const char* filename = nullptr;
@@ -164,9 +143,8 @@ void DirectorConfigClient::resync(posix::error_t errcode) noexcept
     {
       posix::syslog << posix::priority::critical
                     << "Unable to read directory of Director configuation files: %1"
-                    << DIRECTOR_CONFIG_PATH
+                    << DIRECTOR_CONFIG_DIR
                     << posix::eom;
-      Application::quit(UNABLE_TO_READ_CONFIGURATION_DIRECTORY);
     }
     else
     {
@@ -190,7 +168,6 @@ void DirectorConfigClient::resync(posix::error_t errcode) noexcept
                         << filename
                         << std::strerror(errno)
                         << posix::eom;
-          Application::quit(UNABLE_TO_READ_CONFIGURATION);
         }
         else if(!tmp_config.importText(buffer))
         {
@@ -198,12 +175,9 @@ void DirectorConfigClient::resync(posix::error_t errcode) noexcept
                         << "Parsing failed will processing Director configuation file: %1"
                         << filename
                         << posix::eom;
-          Application::quit(UNABLE_TO_PARSE_CONFIGURATION);
         }
-        else // no errors! :)
-        {
-          tmp_config.exportKeyPairs(m_data[provider]);
-        }
+
+        tmp_config.exportKeyPairs(m_data[provider]);
       }
       m_sync = true;
       Object::enqueue(synchronized);

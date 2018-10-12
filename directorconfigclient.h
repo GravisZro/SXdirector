@@ -11,6 +11,19 @@
 #include <cxxutils/vfifo.h>
 #include <cxxutils/posix_helpers.h>
 
+#ifndef DIRECTOR_USERNAME
+#define DIRECTOR_USERNAME       "director"
+#endif
+
+#ifndef CONFIG_USERNAME
+#define CONFIG_USERNAME         "config"
+#endif
+
+#ifndef CONFIG_DIRECTOR_SOCKET
+#define CONFIG_DIRECTOR_SOCKET      "/" CONFIG_USERNAME "/" DIRECTOR_USERNAME
+#endif
+
+
 class DirectorConfigClient : public ClientSocket
 {
 public:
