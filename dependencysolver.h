@@ -16,20 +16,25 @@
 class DependencySolver
 {
 public:
-  typedef uint32_t runlevel_t;
-  constexpr static uint32_t invalid_runlevel = UINT32_MAX;
+  typedef int16_t runlevel_t;
+  constexpr static runlevel_t invalid_runlevel = INT16_MIN;
 
-  struct start_stop_t
+  template <typename T>
+  struct depinfo_t
   {
-    runlevel_t runlevel_number;
-    std::vector<std::list<std::string>> start;
-    std::vector<std::list<std::string>> stop;
+    bool is_required;
+    bool is_active;
+    T data;
+    bool operator <(const depinfo_t& other) const noexcept { return data < other.data; }
   };
+
+  template <typename T> using depinfoset_t = std::set<depinfo_t<T>>;
+  using runlevel_dependencies_t = std::vector<depinfoset_t<std::string>>;
 
   inline virtual ~DependencySolver(void) noexcept = default;
 
   void resolveDependencies(void) noexcept;
-  start_stop_t getRunlevelOrder(const std::string& runlevel) const noexcept;
+  runlevel_dependencies_t getRunlevelOrder(const std::string& runlevel) const noexcept;
 
   virtual const std::string& getConfigData(const std::string& config, const std::string& key) const noexcept = 0;
   virtual std::list<std::string> getConfigList(void) const noexcept = 0;
@@ -44,18 +49,6 @@ private:
   struct depnode_t;
   using depnodeptr = std::shared_ptr<depnode_t>;
 
-  template <typename T>
-  struct depinfo_t
-  {
-    bool is_required;
-    bool is_active;
-    T data;
-    bool operator <(const depinfo_t& other) const noexcept { return data < other.data; }
-  };
-
-  template <typename T>
-  using depinfoset_t = std::set<depinfo_t<T>>;
-
   struct depnode_t
   {
     std::string provider_name;
@@ -63,7 +56,7 @@ private:
 
     depinfoset_t<std::string> dep_providers;
     depinfoset_t<std::string> dep_services;
-    depinfoset_t<depnodeptr> dep_nodes; // cache
+    depinfoset_t<depnodeptr> dependencies; // cache
 
     std::set<runlevel_t> runlevel_number_start;
     std::set<runlevel_t> runlevel_number_stop;
@@ -71,12 +64,12 @@ private:
 
   std::map<depnodeptr, int32_t> m_dep_depths; // cache
 
-  using runlevelorder_t = std::set<std::pair<posix::size_t, depnodeptr>>;
+  using runlevelorder_t = std::set<std::pair<posix::size_t, depinfo_t<depnodeptr>>>;
   std::map<runlevel_t, runlevelorder_t> m_orders_start; // the provider starting order by runlevel number
   std::map<runlevel_t, runlevelorder_t> m_orders_stop; // the provider stopping order by runlevel number
 
-  int32_t dep_depth(depnodeptr origin, depinfo_t<depnodeptr> dep, depinfoset_t<depnodeptr> path, bool mandatory) noexcept;
-  bool recurse_add(std::set<std::pair<posix::size_t, depnodeptr>>& subset, depnodeptr dep, bool active) const noexcept;
+  int32_t dependency_depth(depnodeptr origin, depinfo_t<depnodeptr> dependency, depinfoset_t<depnodeptr> path, bool is_required) noexcept;
+  bool recurse_add(runlevelorder_t& subset, depinfo_t<depnodeptr> dependency, bool activate) const noexcept;
 };
 
 #endif // DEPENDENCYSOLVER_H

@@ -16,7 +16,7 @@ static std::set<std::string> clean_explode(const std::string& str, char delim) n
   std::string newstr;
   newstr.reserve(NAME_MAX);
 
-  for(auto& character : str)
+  for(const auto& character : str)
   {
     if(character == delim)
     {
@@ -47,60 +47,59 @@ void DependencySolver::queueErrorMessage(const std::string& context, const std::
 static inline std::string active_string(bool is_active) { return is_active ? "active" : "inactive"; }
 static inline std::string required_string(bool is_required) { return is_required ? "requirement" : "enhancement"; }
 
-int32_t DependencySolver::dep_depth(depnodeptr origin, depinfo_t<depnodeptr> dep, depinfoset_t<depnodeptr> path, bool mandatory) noexcept
+int32_t DependencySolver::dependency_depth(depnodeptr origin, depinfo_t<depnodeptr> dependency, depinfoset_t<depnodeptr> path, bool is_required) noexcept
 {
   int32_t max_depth = 0;
 
-  if(dep.data == nullptr)
+  if(dependency.data == nullptr)
     return posix::error_response; // report unresolved dependency
 
-  auto res = m_dep_depths.find(dep.data);
-  if(res != m_dep_depths.end())
-    return res->second;
+  auto iter = m_dep_depths.find(dependency.data); // search for dep
+  if(iter != m_dep_depths.end()) // if found
+    return iter->second; // return previously calculated value
 
-  if(!path.emplace(dep).second) // if failed to add to path (because it exists)
+  if(!path.emplace(dependency).second) // if failed to add to path (because it exists)
     return posix::error_response; // report circular dependency
 
-  for(auto& ptr : dep.data->dep_nodes)
+  for(const depinfo_t<depnodeptr>& ptr : dependency.data->dependencies) // for each dep dependency
   {
-    auto depth = dep_depth(origin, ptr, path, mandatory && ptr.is_required);
-    if(mandatory && ptr.is_required && depth < 0)
-      queueErrorMessage(origin->provider_name, dep.data->provider_name + ".dependencies." + active_string(dep.is_active) + ".requirement", "circular"); // report circular dependency because these dependencies are mandatory
-    max_depth = std::max(max_depth, depth);
+    int32_t depth = dependency_depth(origin, ptr, path, is_required && ptr.is_required); // get depth of dep dependency
+    if(is_required && ptr.is_required && depth < 0) // if required and get an error response
+      queueErrorMessage(origin->provider_name, dependency.data->provider_name + ".dependencies." + active_string(dependency.is_active) + ".requirement", "circular"); // report circular dependency because these dependencies are mandatory
+    max_depth = std::max(max_depth, depth); // save the greater depth
   }
 
-  return max_depth + 1;
+  return max_depth + 1; // return the deepest dependency depth (plus one for itself)
 }
 
-bool DependencySolver::recurse_add(std::set<std::pair<posix::size_t, depnodeptr>>& superset, depnodeptr dep, bool is_active) const noexcept
+bool DependencySolver::recurse_add(runlevelorder_t& superset, depinfo_t<depnodeptr> dependency, bool activate) const noexcept
 {
-  auto iter = m_dep_depths.find(dep);
+  auto iter = m_dep_depths.find(dependency.data);
   if(iter == m_dep_depths.end())
-    return false;
+    return false; // depth of dependency not found
 
-  const auto& depth = iter->second;
+  const int32_t& depth = iter->second;
   if(depth == posix::error_response)
-    return false; // dep has unmet dependencies
+    return false; // dependency has unmet dependencies
 
-  if(!superset.emplace(depth, dep).second)
-    return false; // dep already exists
+  if(!superset.emplace(depth, dependency).second)
+    return false; // dependency already exists
 
-  for(auto& subdep : dep->dep_nodes)
-    if(is_active && !recurse_add(superset, subdep.data, is_active))  // if required AND have an unmet dependency
-      return false; // fail
-
-  std::set<std::pair<posix::size_t, depnodeptr>> subset;
-  for(auto& subdep : dep->dep_nodes)
+  if(activate) // if activating
   {
-    subset.clear();
-    subset.emplace(depth, dep);
-    if(!is_active && recurse_add(subset, subdep.data, is_active)) // if optional AND have no unmet dependencies
-      for(auto subsubdep : subset) // incorporate subset into superset
-        superset.emplace(subsubdep);
+    for(const depinfo_t<depnodeptr>& subdependency : dependency.data->dependencies)
+      if(!recurse_add(superset, subdependency, true))  // if have an unmet dependency
+        return false; // fail
   }
+  else // if deactivating
+    for(const depinfo_t<depnodeptr>& subdependency : dependency.data->dependencies)
+    {
+      runlevelorder_t subset = { { depth, dependency } };
+      if(recurse_add(subset, subdependency, false)) // if subdependency has no unmet dependencies
+        superset.insert(subset.begin(), subset.end()); // incorporate subset into superset
+    }
 
-   // all required dependencies have been met!
-  return true;
+  return true; // all dependencies have been met!
 }
 
 void DependencySolver::resolveDependencies(void) noexcept
@@ -121,22 +120,22 @@ void DependencySolver::resolveDependencies(void) noexcept
   m_errors.clear(); // clear error messages
 
   // create node of each config
-  for(auto& configname : getConfigList())
+  for(const std::string& configname : getConfigList())
     dep_by_provider.emplace(configname, std::make_shared<depnode_t>());
 
   // process each config
-  for(auto& configname : getConfigList())
+  for(const std::string& configname : getConfigList())
   {
     auto get_set = [this, configname](const std::string& source)
                      { return clean_explode(getConfigData(configname, source), LIST_DELIM); };
 
     auto merge_in = [](depinfoset_t<std::string>& dest, const std::set<std::string> source, bool is_required, bool is_active)
     {
-      for(const auto& str : source)
+      for(const std::string& str : source)
         dest.emplace(depinfo_t<std::string>{is_required, is_active, str});
     };
 
-    auto& node = dep_by_provider.at(configname);
+    const depnodeptr& node = dep_by_provider.at(configname);
     all_deps.emplace(node);
 
     node->provider_name = configname;
@@ -172,82 +171,90 @@ void DependencySolver::resolveDependencies(void) noexcept
   }
 
 //=== post-processing ===
-  for(auto& configname : getConfigList())
+  for(const std::string& configname : getConfigList())
   {
-    auto& node = dep_by_provider.at(configname);
+    const depnodeptr& node = dep_by_provider.at(configname);
     for(const depinfo_t<std::string>& service : node->dep_services)
     {
-      auto inverse_dep = dep_by_service.find(service.data);
-      if(inverse_dep == dep_by_service.end())
+      auto iter = dep_by_service.find(service.data);
+      if(iter == dep_by_service.end())
         queueErrorMessage(service.data, "service." + active_string(service.is_active) + "." + required_string(service.is_required), "unresolved");
       else if(service.is_active)
-        node->dep_nodes.emplace(depinfo_t<depnodeptr>{ service.is_required, service.is_active, inverse_dep->second });
+        node->dependencies.emplace(depinfo_t<depnodeptr>{ service.is_required, service.is_active, iter->second });
       else
-        inverse_dep->second->dep_nodes.emplace(depinfo_t<depnodeptr>{ service.is_required, service.is_active, node });
+        iter->second->dependencies.emplace(depinfo_t<depnodeptr>{ service.is_required, service.is_active, node });
     }
 
     for(const depinfo_t<std::string>& provider : node->dep_providers)
     {
-      auto inverse_dep = dep_by_provider.find(provider.data);
-      if(inverse_dep == dep_by_provider.end())
+      auto iter = dep_by_provider.find(provider.data);
+      if(iter == dep_by_provider.end())
         queueErrorMessage(provider.data, "provider." + active_string(provider.is_active) + "." + required_string(provider.is_required), "unresolved");
       else if(provider.is_active)
-        node->dep_nodes.emplace(depinfo_t<depnodeptr>{ provider.is_required, provider.is_active, inverse_dep->second });
+        node->dependencies.emplace(depinfo_t<depnodeptr>{ provider.is_required, provider.is_active, iter->second });
       else
-        inverse_dep->second->dep_nodes.emplace(depinfo_t<depnodeptr>{ provider.is_required, provider.is_active, node });
+        iter->second->dependencies.emplace(depinfo_t<depnodeptr>{ provider.is_required, provider.is_active, node });
     }
   }
 
 //=== begin resolution ===
 
   // find depths of all providers
-  for(auto& dep : all_deps)
-    m_dep_depths.emplace(dep, dep_depth(dep, depinfo_t<depnodeptr>{requirement, active, dep}, {}, true));
+  for(const depnodeptr& dep : all_deps)
+    m_dep_depths.emplace(dep, dependency_depth(dep, depinfo_t<depnodeptr>{requirement, active, dep}, {}, true));
 
   // build a list of to start/stop providers for each runlevel
-  for(auto& dep : all_deps)
+  for(const depnodeptr& dep : all_deps)
   {
     for(runlevel_t rl : dep->runlevel_number_start)
-      if(!recurse_add(m_orders_start[rl], dep, active)) // add all dependencies to the map of starting orders
+      if(!recurse_add(m_orders_start[rl], depinfo_t<depnodeptr>{ requirement, active, dep }, active)) // add all dependencies to the map of starting orders
         queueErrorMessage(dep->provider_name, "runlevel." + std::to_string(rl) + ".active", "add failed");
 
     for(runlevel_t rl : dep->runlevel_number_stop)
-      if(!recurse_add(m_orders_stop[rl], dep, inactive)) // add all dependencies to the map of stopping orders
+      if(!recurse_add(m_orders_stop[rl], depinfo_t<depnodeptr>{ requirement, inactive, dep }, inactive)) // add all dependencies to the map of stopping orders
         queueErrorMessage(dep->provider_name, "runlevel." + std::to_string(rl) + ".inactive", "add failed");
   }
 
   // destroy all cached data
   m_dep_depths.clear();
-  for(auto& dep : all_deps)
-    dep->dep_nodes.clear();
+  for(const depnodeptr& dep : all_deps)
+    dep->dependencies.clear();
 }
 
-DependencySolver::start_stop_t DependencySolver::getRunlevelOrder(const std::string& runlevel) const noexcept
+DependencySolver::runlevel_dependencies_t DependencySolver::getRunlevelOrder(const std::string& runlevel) const noexcept
 {
-  start_stop_t data;
+  runlevel_dependencies_t data;
   runlevel_t runlevel_number = getRunlevelNumber(runlevel);
   if(runlevel_number != invalid_runlevel)
   {
-    data.runlevel_number = runlevel_number; // copy the runlevel numeric value
-    data.start.reserve(64);
-    data.stop .reserve(64);
+    data.reserve(64);
+    //data.start.reserve(64);
+    //data.stop .reserve(64);
 
-    auto order_start_iter = m_orders_start.find(data.runlevel_number); // find the data for the runlevel
-    if(order_start_iter != m_orders_start.end()) // ensure that the data was found
-      for(auto& pair : order_start_iter->second)
+    auto order_stop_iter = m_orders_stop.find(runlevel_number); // find the data for the runlevel
+    if(order_stop_iter != m_orders_stop.end()) // ensure that the data was found
+      for(const std::pair<posix::size_t, depinfo_t<depnodeptr>>& pair : order_stop_iter->second)
       {
-        if(data.start.size() < pair.first + 1)
-          data.start.resize(pair.first + 1);
-        data.start.at(pair.first).emplace_back(pair.second->provider_name); // add provider to ordered list
+        if(data.size() < pair.first + 1)
+          data.resize(pair.first + 1);
+        if(!pair.second.is_active) // if deactivating
+          data.at(pair.first).emplace(depinfo_t<std::string>{
+                                        pair.second.is_required,
+                                        pair.second.is_active,
+                                        pair.second.data->provider_name });
       }
 
-    auto order_stop_iter = m_orders_stop.find(data.runlevel_number); // find the data for the runlevel
-    if(order_stop_iter != m_orders_stop.end()) // ensure that the data was found
-      for(auto& pair : order_stop_iter->second)
+    auto order_start_iter = m_orders_start.find(runlevel_number); // find the data for the runlevel
+    if(order_start_iter != m_orders_start.end()) // ensure that the data was found
+      for(const std::pair<posix::size_t, depinfo_t<depnodeptr>>& pair : order_start_iter->second)
       {
-        if(data.stop.size() < pair.first + 1)
-          data.stop.resize(pair.first + 1);
-        data.stop.at(pair.first).emplace_back(pair.second->provider_name); // add provider to ordered list
+        if(data.size() < pair.first + 1)
+          data.resize(pair.first + 1);
+        if(pair.second.is_active) // if deactivating
+          data.at(pair.first).emplace(depinfo_t<std::string>{
+                                        pair.second.is_required,
+                                        pair.second.is_active,
+                                        pair.second.data->provider_name });
       }
   }
   return data; // return ordered list of providers to start/stop for this runlevel
