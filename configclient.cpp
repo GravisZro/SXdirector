@@ -12,21 +12,8 @@
 #define SCFS_PATH               "/svc"
 #endif
 
-#ifdef ANONYMOUS_SOCKET
-#undef ANONYMOUS_SOCKET
-#endif
-#define ANONYMOUS_SOCKET        "\0"
-
-#ifndef CONFIG_USERNAME
-#define CONFIG_USERNAME         "config"
-#endif
-
-#ifndef CONFIG_IO_SOCKET
-#define CONFIG_IO_SOCKET        SCFS_PATH "/" CONFIG_USERNAME "/io"
-#endif
-
 #ifndef CONFIG_CONFIG_PATH
-#define CONFIG_CONFIG_PATH      "/etc/config"
+#define CONFIG_CONFIG_PATH      "/etc/" CONFIG_USERNAME
 #endif
 
 #ifndef DIRECTOR_CONFIG_FILE
@@ -82,8 +69,6 @@ void ConfigClient::resync(posix::error_t errcode) noexcept
   if(isConnected())
     disconnect();
 
-  bool socket_file = use_socket_file(CONFIG_IO_SOCKET);
-
   bool try_connecting = true;
   if(errcode != posix::success_response) // if not the first connection attempt
   {
@@ -91,7 +76,7 @@ void ConfigClient::resync(posix::error_t errcode) noexcept
   }
 
   if(try_connecting &&
-     connect(socket_file ? CONFIG_IO_SOCKET : ANONYMOUS_SOCKET CONFIG_IO_SOCKET) &&
+     connect(SCFS_PATH CONFIG_IO_SOCKET) &&
      write(vfifo("RPC", "syncCall"), posix::invalid_descriptor)) // no errors!
   {
   }
@@ -101,15 +86,13 @@ void ConfigClient::resync(posix::error_t errcode) noexcept
     {
       if(!isConnected())
         posix::syslog << posix::priority::warning
-                      << "Unable to connect to %1 %2"
-                      << (socket_file ? "socket file" : "anonymous socket")
-                      << CONFIG_IO_SOCKET
+                      << "Unable to connect to socket file %1"
+                      << SCFS_PATH CONFIG_IO_SOCKET
                       << posix::eom;
       else
         posix::syslog << posix::priority::warning
-                      << "Connection error for %1 %2 : %3"
-                      << (socket_file ? "socket file" : "anonymous socket")
-                      << CONFIG_IO_SOCKET
+                      << "Connection error for %1 : %2"
+                      << SCFS_PATH CONFIG_IO_SOCKET
                       << std::strerror(errno)
                       << posix::eom;
     }
@@ -129,7 +112,6 @@ void ConfigClient::resync(posix::error_t errcode) noexcept
                     << (CONFIG_CONFIG_PATH "/" DIRECTOR_CONFIG_FILE)
                     << std::strerror(errno)
                     << posix::eom;
-      Application::quit(UNABLE_TO_READ_CONFIGURATION);
     }
     else if(!tmp_config.importText(buffer))
     {
@@ -137,7 +119,6 @@ void ConfigClient::resync(posix::error_t errcode) noexcept
                     << "Parsing failed will processing Director provider configuation file: %1"
                     << (CONFIG_CONFIG_PATH "/" DIRECTOR_CONFIG_FILE)
                     << posix::eom;
-      Application::quit(UNABLE_TO_PARSE_CONFIGURATION);
     }
     else // no errors! :)
     {
@@ -169,10 +150,10 @@ void ConfigClient::valueUnset(const std::string& key) noexcept
 const std::string& ConfigClient::get(const std::string& key) const noexcept
 {
   static std::string nullvalue;
-  auto keydata = m_data.find(key);
-  if(keydata == m_data.end())
+  auto iter = m_data.find(key);
+  if(iter == m_data.end())
     return nullvalue;
-  return keydata->second;
+  return iter->second;
 }
 
 void ConfigClient::set(const std::string& key, const std::string& value) noexcept

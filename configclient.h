@@ -11,6 +11,14 @@
 #include <cxxutils/vfifo.h>
 #include <cxxutils/posix_helpers.h>
 
+#ifndef CONFIG_USERNAME
+#define CONFIG_USERNAME         "config"
+#endif
+
+#ifndef CONFIG_IO_SOCKET
+#define CONFIG_IO_SOCKET        "/" CONFIG_USERNAME "/io"
+#endif
+
 class ConfigClient : public ClientSocket
 {
 public:
