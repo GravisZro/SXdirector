@@ -29,12 +29,18 @@ public:
   };
 
   template <typename T> using depinfoset_t = std::set<depinfo_t<T>>;
-  using runlevel_dependencies_t = std::vector<depinfoset_t<std::string>>;
+
+  struct start_stop_t
+  {
+    runlevel_t runlevel_number;
+    std::vector<std::list<std::string>> start; // NOTE: these are in order!
+    std::vector<std::list<std::string>> stop;
+  };
 
   inline virtual ~DependencySolver(void) noexcept = default;
 
   void resolveDependencies(void) noexcept;
-  runlevel_dependencies_t getRunlevelOrder(const std::string& runlevel) const noexcept;
+  start_stop_t getRunlevelOrder(const std::string& runlevel) const noexcept;
 
   virtual const std::string& getConfigData(const std::string& config, const std::string& key) const noexcept = 0;
   virtual std::list<std::string> getConfigList(void) const noexcept = 0;
@@ -62,14 +68,15 @@ private:
     std::set<runlevel_t> runlevel_number_stop;
   };
 
-  std::map<depnodeptr, int32_t> m_dep_depths; // cache
+  typedef int depth_t; // can be negative!
+  std::map<depnodeptr, depth_t> m_dep_depths; // cache
 
-  using runlevelorder_t = std::set<std::pair<posix::size_t, depinfo_t<depnodeptr>>>;
+  using runlevelorder_t = std::set<std::pair<depth_t, depnodeptr>>;
   std::map<runlevel_t, runlevelorder_t> m_orders_start; // the provider starting order by runlevel number
   std::map<runlevel_t, runlevelorder_t> m_orders_stop; // the provider stopping order by runlevel number
 
-  int32_t dependency_depth(depnodeptr origin, depinfo_t<depnodeptr> dependency, depinfoset_t<depnodeptr> path, bool is_required) noexcept;
-  bool recurse_add(runlevelorder_t& subset, depinfo_t<depnodeptr> dependency, bool activate) const noexcept;
+  depth_t dependency_depth(depnodeptr origin, depinfo_t<depnodeptr> dependency, depinfoset_t<depnodeptr> path, bool is_required) noexcept;
+  bool recurse_add(runlevelorder_t& subset, depnodeptr dependency, bool activate) const noexcept;
 };
 
 #endif // DEPENDENCYSOLVER_H
