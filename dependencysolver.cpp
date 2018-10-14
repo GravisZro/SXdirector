@@ -226,33 +226,42 @@ void DependencySolver::resolveDependencies(void) noexcept
     dep->dependencies.clear();
 }
 
-DependencySolver::start_stop_t DependencySolver::getRunlevelOrder(const std::string& runlevel) const noexcept
+DependencySolver::runlevel_actions_t DependencySolver::getRunlevelOrder(const std::string& runlevel) const noexcept
 {
-  start_stop_t data;
+  runlevel_actions_t data;
   runlevel_t runlevel_number = getRunlevelNumber(runlevel);
   if(runlevel_number != invalid_runlevel)
   {
-    data.runlevel_number = runlevel_number; // copy the runlevel numeric value
-    data.start.reserve(64);
-    data.stop .reserve(64);
+    std::vector<std::list<std::string>> start; // NOTE: these are in order!
+    std::vector<std::list<std::string>> stop;
+    start.reserve(64);
+    stop .reserve(64);
 
-    auto order_start_iter = m_orders_start.find(data.runlevel_number); // find the data for the runlevel
+    auto order_start_iter = m_orders_start.find(runlevel_number); // find the data for the runlevel
     if(order_start_iter != m_orders_start.end()) // ensure that the data was found
       for(auto& pair : order_start_iter->second)
       {
-        if(data.start.size() < posix::size_t(pair.first + 1))
-          data.start.resize(posix::size_t(pair.first + 1));
-        data.start.at(posix::size_t(pair.first)).emplace_back(pair.second->provider_name); // add provider to ordered list
+        if(start.size() < posix::size_t(pair.first + 1))
+          start.resize(posix::size_t(pair.first + 1));
+        start.at(posix::size_t(pair.first)).emplace_back(pair.second->provider_name); // add provider to ordered list
       }
 
-    auto order_stop_iter = m_orders_stop.find(data.runlevel_number); // find the data for the runlevel
+    auto order_stop_iter = m_orders_stop.find(runlevel_number); // find the data for the runlevel
     if(order_stop_iter != m_orders_stop.end()) // ensure that the data was found
       for(auto& pair : order_stop_iter->second)
       {
-        if(data.stop.size() < posix::size_t(pair.first + 1))
-          data.stop.resize(posix::size_t(pair.first) + 1);
-        data.stop.at(posix::size_t(pair.first)).emplace_back(pair.second->provider_name); // add provider to ordered list
+        if(stop.size() < posix::size_t(pair.first + 1))
+          stop.resize(posix::size_t(pair.first) + 1);
+        stop.at(posix::size_t(pair.first)).emplace_back(pair.second->provider_name); // add provider to ordered list
       }
+
+    for(const std::list<std::string>& providers : stop)
+      for(const std::string& provider : providers)
+          data.emplace(false, provider);
+
+    for(const std::list<std::string>& providers : start)
+      for(const std::string& provider : providers)
+          data.emplace(true, provider);
   }
   return data; // return ordered list of providers to start/stop for this runlevel
 }

@@ -7,6 +7,7 @@
 #include <list>
 #include <vector>
 #include <set>
+#include <queue>
 #include <memory>
 #include <functional>
 
@@ -30,17 +31,12 @@ public:
 
   template <typename T> using depinfoset_t = std::set<depinfo_t<T>>;
 
-  struct start_stop_t
-  {
-    runlevel_t runlevel_number;
-    std::vector<std::list<std::string>> start; // NOTE: these are in order!
-    std::vector<std::list<std::string>> stop;
-  };
+  typedef std::queue<std::pair<bool, std::string>> runlevel_actions_t; // NOTE: these are in order!
 
   inline virtual ~DependencySolver(void) noexcept = default;
 
   void resolveDependencies(void) noexcept;
-  start_stop_t getRunlevelOrder(const std::string& runlevel) const noexcept;
+  runlevel_actions_t getRunlevelOrder(const std::string& runlevel) const noexcept;
 
   virtual const std::string& getConfigData(const std::string& config, const std::string& key) const noexcept = 0;
   virtual std::list<std::string> getConfigList(void) const noexcept = 0;
