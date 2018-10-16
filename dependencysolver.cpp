@@ -3,38 +3,8 @@
 // STL
 #include <algorithm>
 
-// POSIX++
-#include <climits>
-
-#ifndef LIST_DELIM
-#define LIST_DELIM ','
-#endif
-// explode string by deliminator and remove whitespaces
-static std::set<std::string> clean_explode(const std::string& str, char delim) noexcept
-{
-  std::set<std::string> strs;
-  std::string newstr;
-  newstr.reserve(NAME_MAX);
-
-  for(const auto& character : str)
-  {
-    if(character == delim)
-    {
-      if(!newstr.empty())
-      {
-        strs.emplace(newstr);
-        newstr.clear();
-      }
-    }
-    else if(std::isgraph(character))
-      newstr.push_back(character);
-  }
-
-  if(!newstr.empty())
-    strs.emplace(newstr);
-
-  return strs;
-}
+// Director
+#include "string_helpers.h"
 
 void DependencySolver::queueErrorMessage(const std::string& context, const std::string& source, const std::string& problem) noexcept
 {
