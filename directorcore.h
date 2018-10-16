@@ -20,7 +20,7 @@ class DirectorCore : public Object,
                      public DependencySolver
 {
 public:
-  DirectorCore(uid_t euid, gid_t egid, posix::fd_t shmemid = posix::invalid_descriptor) noexcept; // take shared memory identifier from previous instance
+  DirectorCore(uid_t euid, gid_t egid, posix::fd_t fd_num = posix::invalid_descriptor) noexcept; // take shared memory identifier from previous instance
   virtual ~DirectorCore(void) noexcept;
 
   bool        setRunlevel(const std::string& rlname) noexcept;
@@ -30,13 +30,16 @@ public:
   void reloadSettings(void) noexcept;
 
 private:
+  const std::string& getConfigData(const std::string& config, const std::string& key) const noexcept;
+  std::list<std::string> getConfigList(void) const noexcept;
+  runlevel_t getRunlevelNumber(const std::string& rlname) const noexcept;
+  void processJob(void) noexcept;
+
   std::string m_runlevel;
   std::map<std::string, runlevel_t> m_runlevel_aliases;
   std::unordered_map<std::string, JobController> m_process_map; // indexed by provider name
 
-  const std::string& getConfigData(const std::string& config, const std::string& key) const noexcept;
-  std::list<std::string> getConfigList(void) const noexcept;
-  runlevel_t getRunlevelNumber(const std::string& rlname) const noexcept;
+  std::queue<std::pair<bool, std::string>> m_action_queue;
 
   ConfigClient m_config_client;
   DirectorConfigClient m_director_config_client;
