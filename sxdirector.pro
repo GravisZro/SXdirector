@@ -13,7 +13,7 @@ QMAKE_CXXFLAGS += -pipe -Os
 QMAKE_CXXFLAGS += -fno-exceptions
 QMAKE_CXXFLAGS += -fno-rtti
 
-QMAKE_CXXFLAGS += -fno-threadsafe-statics
+#QMAKE_CXXFLAGS += -fno-threadsafe-statics
 QMAKE_CXXFLAGS += -fno-asynchronous-unwind-tables
 #QMAKE_CXXFLAGS += -fstack-protector-all
 QMAKE_CXXFLAGS += -fstack-protector-strong
@@ -27,7 +27,7 @@ QMAKE_LFLAGS += -Wl,--gc-sections
 LIBS += -lrt
 
 # defines
-DEFINES += INTERRUPTED_WRAPPER
+debug:DEFINES += INTERRUPTED_WRAPPER
 
 #LIBS += -lpthread
 experimental {
@@ -50,9 +50,13 @@ SOURCES = main.cpp \
     configclient.cpp \
     jobcontroller.cpp \
     dependencysolver.cpp \
+    string_helpers.cpp \
+    exitpending.cpp \
     $$PDTK/application.cpp \
     $$PDTK/socket.cpp \
+    $$PDTK/cxxutils/vfifo.cpp \
     $$PDTK/cxxutils/configmanip.cpp \
+    $$PDTK/cxxutils/syslogstream.cpp \
     $$PDTK/specialized/peercred.cpp \
     $$PDTK/specialized/procstat.cpp \
     $$PDTK/specialized/proclist.cpp \
@@ -60,7 +64,9 @@ SOURCES = main.cpp \
     $$PDTK/specialized/FileEvent.cpp \
     $$PDTK/specialized/PollEvent.cpp \
     $$PDTK/specialized/ProcessEvent.cpp \
-    $$PDTK/specialized/TimerEvent.cpp \
+    $$PDTK/specialized/TimerEvent.cpp
+
+tui:SOURCES += \
     $$PDTK/tui/widget.cpp \
     $$PDTK/tui/window.cpp \
     $$PDTK/tui/screen.cpp \
@@ -70,22 +76,24 @@ SOURCES = main.cpp \
     $$PDTK/tui/event.cpp \
     $$PDTK/tui/keyboard.cpp
 
-HEADERS +=  \
+HEADERS += \
     directorcore.h \
     directorconfigclient.h \
     configclient.h \
     jobcontroller.h \
     dependencysolver.h \
+    string_helpers.h \
     $$PDTK/object.h \
     $$PDTK/application.h \
     $$PDTK/socket.h \
     $$PDTK/cxxutils/vfifo.h \
+    $$PDTK/cxxutils/configmanip.h \
+    $$PDTK/cxxutils/syslogstream.h \
     $$PDTK/cxxutils/posix_helpers.h \
     $$PDTK/cxxutils/socket_helpers.h \
     $$PDTK/cxxutils/error_helpers.h \
     $$PDTK/cxxutils/hashing.h \
     $$PDTK/cxxutils/colors.h \
-    $$PDTK/cxxutils/configmanip.h \
     $$PDTK/cxxutils/misc_helpers.h \
     $$PDTK/cxxutils/pipedfork.h \
     $$PDTK/cxxutils/signal_helpers.h \
@@ -98,6 +106,10 @@ HEADERS +=  \
     $$PDTK/specialized/PollEvent.h \
     $$PDTK/specialized/ProcessEvent.h \
     $$PDTK/specialized/TimerEvent.h \
+    exitpending.h
+
+
+tui:HEADERS += \
     $$PDTK/tui/widget.h \
     $$PDTK/tui/window.h \
     $$PDTK/tui/screen.h \
