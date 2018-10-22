@@ -2,7 +2,7 @@
 #define STRING_HELPERS_H
 
 // STL
-#include <set>
+#include <list>
 #include <string>
 
 // PDTK
@@ -14,7 +14,7 @@
 #endif
 
 // explode string by deliminator and remove whitespaces
-std::set<std::string> clean_explode(const std::string& str, char delim) noexcept;
+std::list<std::string> clean_explode(const std::string& str, char delim) noexcept;
 
 
 posix::signal::EId decode_signal_name(const std::string& signal_name) noexcept;

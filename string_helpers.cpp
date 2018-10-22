@@ -8,9 +8,9 @@
 #include <cxxutils/hashing.h>
 
 
-std::set<std::string> clean_explode(const std::string& str, char delim) noexcept
+std::list<std::string> clean_explode(const std::string& str, char delim) noexcept
 {
-  std::set<std::string> strs;
+  std::list<std::string> strs;
   std::string newstr;
   newstr.reserve(NAME_MAX);
 
@@ -20,7 +20,7 @@ std::set<std::string> clean_explode(const std::string& str, char delim) noexcept
     {
       if(!newstr.empty())
       {
-        strs.emplace(newstr);
+        strs.emplace_back(newstr);
         newstr.clear();
       }
     }
@@ -29,7 +29,7 @@ std::set<std::string> clean_explode(const std::string& str, char delim) noexcept
   }
 
   if(!newstr.empty())
-    strs.emplace(newstr);
+    strs.emplace_back(newstr);
 
   return strs;
 }

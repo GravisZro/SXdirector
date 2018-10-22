@@ -86,7 +86,7 @@ posix::fd_t DirectorCore::shmStore(void) noexcept
   for(auto& pair : m_process_map)
     buffer_size += 4 + pair.first.size() + // string
                    4 + sizeof(size_t) + // list size
-                   (4 * pair.second.list().size() * 2 * sizeof(pid_t)); // list of pairs
+                   (4 * pair.second.getPids().size() * 2 * sizeof(pid_t)); // list of pairs
   // end buffer size calculation
 
   posix::fd_t shmid = ::shmget(IPC_PRIVATE, buffer_size, IPC_CREAT | SHM_R | SHM_W); // create shared memory segment
@@ -109,7 +109,7 @@ posix::fd_t DirectorCore::shmStore(void) noexcept
       for(auto& pair : m_process_map)
       {
         storage << pair.first;
-        auto list = pair.second.list();
+        auto list = pair.second.getPids();
         storage << list.size();
         for(auto& pair : list)
           storage << pair.first << pair.second;
@@ -321,16 +321,18 @@ void DirectorCore::processJob(void) noexcept
             m_waitexit.setServices(clean_explode(m_director_config_client.get(config, "/Process/ProvidedServices"), LIST_DELIM));
             if(!timeout)
               timeout = 100000; // 1/10 second timeout
-            m_waitexit.setTimeout(timeout);
             break;
           }
           default:
           case "ProcessExit"_hash:
           {
-
+            m_waitexit.setPids(job.getPids());
+            if(!timeout)
+              timeout = 3000000; // 3 second timeout
             break;
           }
         }
+        m_waitexit.setTimeout(timeout);
       }
     }
   }

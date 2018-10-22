@@ -9,13 +9,15 @@ void JobController::add(pid_t parent_pid, pid_t child_pid) noexcept
   {
     m_pids.emplace_back(parent_pid, child_pid);
     m_procs.emplace_back(child_pid, ProcessEvent::Fork | ProcessEvent::Exit); // add as child
-    Object::connect(m_procs.back().forked, this, &JobController::add);
+    ProcessEvent& proc = m_procs.back();
 
-    Object::connect(m_procs.back().exited,
+    Object::connect(proc.forked, this, &JobController::add);
+
+    Object::connect(proc.exited,
                     Object::fslot_t<void, pid_t, posix::error_t>([this](pid_t pid, int rval) noexcept
                       { remove(pid); if(m_procs.empty()) { Object::enqueue(exited, rval); } }));
 
-    Object::connect(m_procs.back().killed,
+    Object::connect(proc.killed,
                     Object::fslot_t<void, pid_t, posix::signal::EId>([this](pid_t pid, int rval) noexcept
                       { remove(pid); if(m_procs.empty()) { Object::enqueue(exited, rval); } }));
   }

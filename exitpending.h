@@ -3,6 +3,7 @@
 
 // STL
 #include <set>
+#include <list>
 #include <string>
 
 // PDTK
@@ -18,7 +19,7 @@ public:
   void setPids(const std::list<std::pair<pid_t, pid_t>>& pids) noexcept
     { m_pids = pids; m_services.clear(); }
 
-  void setServices(const std::set<std::string>& services) noexcept
+  void setServices(const std::list<std::string>& services) noexcept
     { m_services = services; m_pids.clear(); }
 
   bool setTimeout(microseconds_t timeout) noexcept
@@ -29,7 +30,7 @@ public:
 private:
   bool still_exist(void) noexcept;
   std::list<std::pair<pid_t, pid_t>> m_pids;
-  std::set<std::string> m_services;
+  std::list<std::string> m_services;
   TimerEvent m_timer;
 };
 
