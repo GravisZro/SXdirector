@@ -44,6 +44,7 @@ private:
   posix::fd_t shmStore(void) noexcept;
   bool shmLoad(posix::fd_t shmid) noexcept;
   void processJob(void) noexcept;
+  void jobDone(void) noexcept;
   void jobStuck(void) noexcept;
 
 // variables
