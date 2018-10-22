@@ -28,6 +28,7 @@ LIBS += -lrt
 
 # defines
 debug:DEFINES += INTERRUPTED_WRAPPER
+DEFINES += CATALOG_NAME=director
 
 #LIBS += -lpthread
 experimental {
@@ -57,6 +58,9 @@ SOURCES = main.cpp \
     $$PDTK/cxxutils/vfifo.cpp \
     $$PDTK/cxxutils/configmanip.cpp \
     $$PDTK/cxxutils/syslogstream.cpp \
+    $$PDTK/cxxutils/translate.cpp \
+    $$PDTK/cxxutils/mountpoint_helpers.cpp \
+    $$PDTK/specialized/fstable.cpp \
     $$PDTK/specialized/peercred.cpp \
     $$PDTK/specialized/procstat.cpp \
     $$PDTK/specialized/proclist.cpp \
@@ -64,7 +68,8 @@ SOURCES = main.cpp \
     $$PDTK/specialized/FileEvent.cpp \
     $$PDTK/specialized/PollEvent.cpp \
     $$PDTK/specialized/ProcessEvent.cpp \
-    $$PDTK/specialized/TimerEvent.cpp
+    $$PDTK/specialized/TimerEvent.cpp \
+    $$PDTK/specialized/MountEvent.cpp
 
 tui:SOURCES += \
     $$PDTK/tui/widget.cpp \
@@ -89,6 +94,8 @@ HEADERS += \
     $$PDTK/cxxutils/vfifo.h \
     $$PDTK/cxxutils/configmanip.h \
     $$PDTK/cxxutils/syslogstream.h \
+    $$PDTK/cxxutils/translate.h \
+    $$PDTK/cxxutils/mountpoint_helpers.h \
     $$PDTK/cxxutils/posix_helpers.h \
     $$PDTK/cxxutils/socket_helpers.h \
     $$PDTK/cxxutils/error_helpers.h \
@@ -97,6 +104,7 @@ HEADERS += \
     $$PDTK/cxxutils/misc_helpers.h \
     $$PDTK/cxxutils/pipedfork.h \
     $$PDTK/cxxutils/signal_helpers.h \
+    $$PDTK/specialized/fstable.h \
     $$PDTK/specialized/peercred.h \
     $$PDTK/specialized/procstat.h \
     $$PDTK/specialized/proclist.h \
@@ -106,6 +114,7 @@ HEADERS += \
     $$PDTK/specialized/PollEvent.h \
     $$PDTK/specialized/ProcessEvent.h \
     $$PDTK/specialized/TimerEvent.h \
+    $$PDTK/specialized/MountEvent.h \
     exitpending.h
 
 
