@@ -30,7 +30,7 @@ bool ExitPending::still_exist(void) noexcept
         return true;
     }
   }
-  else if (m_pids.empty())
+  else if(m_pids.empty())
   {
     struct process_state_t state;
     for(const std::pair<pid_t, pid_t>& pid_pair : m_pids)

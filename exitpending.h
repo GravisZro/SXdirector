@@ -16,11 +16,14 @@ public:
   ExitPending(void) noexcept;
   ~ExitPending(void) noexcept = default;
 
+  void clear(void) noexcept
+    { m_services.clear(); m_pids.clear(); m_timer.stop(); }
+
   void setPids(const std::list<std::pair<pid_t, pid_t>>& pids) noexcept
-    { m_pids = pids; m_services.clear(); }
+    { clear(); m_pids = pids; }
 
   void setServices(const std::list<std::string>& services) noexcept
-    { m_services = services; m_pids.clear(); }
+    { clear(); m_services = services; }
 
   bool setTimeout(microseconds_t timeout) noexcept
     { return m_timer.start(timeout); }
