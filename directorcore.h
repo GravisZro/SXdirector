@@ -12,6 +12,7 @@
 // project
 #include "jobcontroller.h"
 #include "configclient.h"
+#include "exitpending.h"
 #include "directorconfigclient.h"
 #include "dependencysolver.h"
 
@@ -43,6 +44,7 @@ private:
   posix::fd_t shmStore(void) noexcept;
   bool shmLoad(posix::fd_t shmid) noexcept;
   void processJob(void) noexcept;
+  void jobStuck(void) noexcept;
 
 // variables
   std::string m_runlevel;
@@ -57,6 +59,7 @@ private:
   DirectorConfigClient m_director_config_client;
   uid_t m_euid;
   gid_t m_egid;
+  ExitPending m_waitexit;
 };
 
 #endif // DIRECTORCORE_H

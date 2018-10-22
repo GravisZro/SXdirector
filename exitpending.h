@@ -12,8 +12,14 @@
 class ExitPending : public Object
 {
 public:
-  ExitPending(std::set<std::string> services) noexcept;
-  ~ExitPending(void) = default;
+  ExitPending(void) noexcept;
+  ~ExitPending(void) noexcept = default;
+
+  void setPids(const std::list<std::pair<pid_t, pid_t>>& pids) noexcept
+    { m_pids = pids; m_services.clear(); }
+
+  void setServices(const std::set<std::string>& services) noexcept
+    { m_services = services; m_pids.clear(); }
 
   bool setTimeout(microseconds_t timeout) noexcept
     { return m_timer.start(timeout); }
@@ -22,6 +28,7 @@ public:
   signal<> exited;
 private:
   bool still_exist(void) noexcept;
+  std::list<std::pair<pid_t, pid_t>> m_pids;
   std::set<std::string> m_services;
   TimerEvent m_timer;
 };

@@ -13,12 +13,12 @@
 // PDTK
 #include <cxxutils/syslogstream.h>
 #include <cxxutils/vterm.h>
+#include <cxxutils/hashing.h>
 #include <specialized/procstat.h>
 #include <specialized/proclist.h>
 
 // Director
 #include "string_helpers.h"
-#include "exitpending.h"
 
 #include <cassert>
 
@@ -31,9 +31,10 @@ DirectorCore::DirectorCore(uid_t euid, gid_t egid, posix::fd_t shmid) noexcept
   if(!shmLoad(shmid)) // if loading from shared memory failed
     buildProcessMap(); // rebuild the process map from scratch
 
-
-  Object::connect(m_config_client.synchronized, this, &DirectorCore::multiSyncReloadSettings);
-  Object::connect(m_director_config_client.synchronized, this, &DirectorCore::multiSyncReloadSettings);
+  Object::connect(m_waitexit.timeout, this, &DirectorCore::jobStuck); // job did not exit in allotted time :(
+  Object::connect(m_waitexit.exited, Object::fslot_t<void>([this]() { m_action_queue.pop(); processJob(); })); // job exited properly :)
+  Object::connect(m_config_client.synchronized, this, &DirectorCore::multiSyncReloadSettings); // config has been updated
+  Object::connect(m_director_config_client.synchronized, this, &DirectorCore::multiSyncReloadSettings); // config has been updated
 }
 
 // prevent m_config_client and m_director_config_client from invoking reloadSettings() multiple times
@@ -310,14 +311,32 @@ void DirectorCore::processJob(void) noexcept
       if(iter != m_process_map.end())
       {
         JobController& job = iter->second;
-        job.sendSignal(decode_signal_name(m_director_config_client.get(config, "/Exiting/Signal")));
+        job.sendSignal(decode_signal_name(m_director_config_client.get(config, "/Exiting/Signal"))); // send job the signal to exit
+        microseconds_t timeout = std::strtoull(m_director_config_client.get(config, "/Exiting/Timeout").c_str(), NULL, 10);
+        const std::string& exit_type = m_director_config_client.get(config, "/Exiting/ExitWaitType");
+        switch(hash(exit_type))
+        {
+          case "ServiceStopped"_hash:
+          {
+            m_waitexit.setServices(clean_explode(m_director_config_client.get(config, "/Process/ProvidedServices"), LIST_DELIM));
+            if(!timeout)
+              timeout = 100000; // 1/10 second timeout
+            m_waitexit.setTimeout(timeout);
+            break;
+          }
+          default:
+          case "ProcessExit"_hash:
+          {
 
-        const std::string& timeout = m_director_config_client.get(config, "/Exiting/Timeout");
-        microseconds_t s = std::strtoull(timeout.c_str(), NULL, 10);
-
-        std::set<std::string> services = clean_explode(m_director_config_client.get(config, "/Process/ProvidedServices"), LIST_DELIM);
-
+            break;
+          }
+        }
       }
     }
   }
+}
+
+void DirectorCore::jobStuck(void) noexcept
+{
+
 }
