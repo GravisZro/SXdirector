@@ -9,6 +9,7 @@
 #include <object.h>
 #include <application.h>
 #include <cxxutils/syslogstream.h>
+#include <cxxutils/translate.h>
 #include <specialized/capabilities.h>
 
 // project
@@ -26,15 +27,18 @@
 #define DIRECTOR_GROUPNAME      DIRECTOR_USERNAME
 #endif
 
+
 void exiting(void) noexcept
 {
   posix::syslog << posix::priority::notice
-                << "Service management provider (Director) has exited."
+                << "Service management provider (Director) has exited."_xlate
                 << posix::eom;
 }
 
+//#include "demo.h"
 int main(int argc, char *argv[]) noexcept
 {
+
   uid_t euid = posix::geteuid();
   gid_t egid = posix::getegid();
   std::atexit(exiting);
@@ -44,7 +48,7 @@ int main(int argc, char *argv[]) noexcept
   if(::prctl(PR_SET_KEEPCAPS, 1) != posix::success_response)
   {
     posix::syslog << posix::priority::error
-                  << "Director must be launched with the ability to manipulate process capabilities"
+                  << "Director must be launched with the ability to manipulate process capabilities"_xlate
                   << posix::eom;
     std::exit(int(std::errc::permission_denied));
   }
@@ -53,7 +57,7 @@ int main(int argc, char *argv[]) noexcept
 
   if(::capget(caps, caps))
     posix::syslog << posix::priority::critical
-                  << "Failed to get capabilities: %1"
+                  << "Failed to get capabilities: %1"_xlate
                   << std::strerror(errno)
                   << posix::eom;
 
@@ -68,23 +72,23 @@ int main(int argc, char *argv[]) noexcept
 
   if(::capset(caps, caps) != posix::success_response)
     posix::syslog << posix::priority::critical
-                  << "Failed to set capabilities: %1"
+                  << "Failed to set capabilities: %1"_xlate
                   << std::strerror(errno)
                   << posix::eom;
 #endif
-
+/*
   if((std::strcmp(posix::getgroupname(egid), DIRECTOR_GROUPNAME) && // if current effective group name is NOT what we want AND
       !posix::setegid(posix::getgroupid(DIRECTOR_GROUPNAME))) || // unable to change effective group id
      (std::strcmp(posix::getusername(euid), DIRECTOR_USERNAME) && // if current effective user name is NOT what we want AND
       !posix::seteuid(posix::getuserid (DIRECTOR_USERNAME)))) // unable to change effective user id
   {
     posix::syslog << posix::priority::error
-                  << "Director must be launched as user/group \"%1\" or have permissions to seteuid/setegid"
+                  << "Director must be launched as user/group \"%1\" or have permissions to seteuid/setegid"_xlate
                   << DIRECTOR_USERNAME
                   << posix::eom;
     std::exit(posix::error_t(std::errc::permission_denied));
   }
-
+*/
   Application app;
   std::signal(SIGPIPE, SIG_IGN);
   //std::signal(SIGINT, [](int){ printf("quit!\n"); Application::quit(0); }); // exit gracefully
@@ -93,15 +97,15 @@ int main(int argc, char *argv[]) noexcept
   if(argc > 1 && std::atoi(argv[1]))
     shmemid = std::atoi(argv[1]);
   DirectorCore core(euid, egid, shmemid);
-
+/*
   static std::function<void(void)> reload = [&core]() noexcept { core.reloadBinary(); }; // function to invoke program reload
   std::signal(SIGINT, [](int) noexcept
   {
     posix::syslog << posix::priority::critical
-                  << "Signal interupt caught.  Service management provider (Director) is reloading."
+                  << "Signal interupt caught.  Service management provider (Director) is reloading."_xlate
                   << posix::eom;
     Object::singleShot(reload);
   }); // queue function to invoke program reload
-
+*/
   return app.exec();
 }
