@@ -6,6 +6,7 @@
 // POSIX++
 #include <climits>
 #include <cstdlib>
+#include <cassert>
 
 // STL
 #include <string>
@@ -20,21 +21,29 @@
 // Director
 #include "string_helpers.h"
 
-#include <cassert>
 
 static_assert(sizeof(size_t) == sizeof(std::unordered_map<int, int>::size_type), "bad size");
 static_assert(sizeof(size_t) == sizeof(std::list<int>::size_type), "bad size");
 
 DirectorCore::DirectorCore(uid_t euid, gid_t egid, posix::fd_t shmid) noexcept
-  : m_euid(euid), m_egid(egid)
+  : m_euid(euid), m_egid(egid), m_childproc(nullptr)
 {
   if(!shmLoad(shmid)) // if loading from shared memory failed
     buildProcessMap(); // rebuild the process map from scratch
 
-  Object::connect(m_waitexit.timeout, this, &DirectorCore::jobStuck); // job did not exit in allotted time :(
-  Object::connect(m_waitexit.exited, Object::fslot_t<void>([this]() { jobDone(); })); // job exited properly :)
+  Object::connect(m_waitexit.event_timeout , this, &DirectorCore::jobStuck); // job did not exit in allotted time :(
+  Object::connect(m_waitexit.event_trigger , this, &DirectorCore::jobDone ); // job exited properly :)
+  Object::connect(m_waitstart.event_timeout, this, &DirectorCore::jobStuck); // job did not exit in allotted time :(
+  Object::connect(m_waitstart.event_trigger, this, &DirectorCore::jobDone ); // job exited properly :)
   Object::connect(m_config_client.synchronized, this, &DirectorCore::multiSyncReloadSettings); // config has been updated
   Object::connect(m_director_config_client.synchronized, this, &DirectorCore::multiSyncReloadSettings); // config has been updated
+}
+
+DirectorCore::~DirectorCore(void) noexcept
+{
+  if(m_childproc != nullptr)
+    delete m_childproc;
+  m_childproc = nullptr;
 }
 
 // prevent m_config_client and m_director_config_client from invoking reloadSettings() multiple times
@@ -62,8 +71,8 @@ bool DirectorCore::buildProcessMap(void) noexcept
       std::memset(reinterpret_cast<void*>(&state), 0, sizeof(state));
       if(procstat(pid, state) == posix::success_response && // if get process state works AND
          (!state.parent_process_id || state.parent_process_id == thispid)) // process has unknown parent process OR director is the parent process
-        for(const std::string& config : m_director_config_client.listConfigs()) // try each config
-          if(m_director_config_client.get(config, "/Process/Executable") == state.executable) // if the executable matches
+        for(const std::string& config : getConfigList()) // try each config
+          if(getConfigValue(config, "/Process/Executable") == state.executable) // if the executable matches
           {
             m_process_map[config].add(thispid, pid); // claim this as a managed process
             std::memset(reinterpret_cast<void*>(&state), 0, sizeof(state)); // wipe process state for safety
@@ -239,7 +248,9 @@ void DirectorCore::reloadSettings(void) noexcept
 
     resolveDependencies();
 
-    if(m_runlevel.empty()) // runlevel is empty if the director was just just started
+    if(!m_action_queue.empty()) // sync interrupted job queue
+      Object::singleShot(this, &DirectorCore::processJob); // start the next job
+    else if(m_runlevel.empty()) // runlevel is empty if the director was just just started
     {
       Object::connect(runlevel_changed, Object::fslot_t<void, const std::string>([this](const std::string& rlname) noexcept {
         terminal::write("oh no: %s\n", rlname.c_str());
@@ -252,7 +263,7 @@ void DirectorCore::reloadSettings(void) noexcept
 }
 
 
-inline const std::string& DirectorCore::getConfigData(const std::string& config, const std::string& key) const noexcept
+inline const std::string& DirectorCore::getConfigValue(const std::string& config, const std::string& key) const noexcept
 {
   return m_director_config_client.get(config, key);
 }
@@ -268,6 +279,11 @@ inline DependencySolver::runlevel_t DirectorCore::getRunlevelNumber(const std::s
   if(iter == m_runlevel_aliases.end())
     return invalid_runlevel;
   return iter->second;
+}
+
+inline const std::unordered_map<std::string, std::string>& DirectorCore::getConfigData(const std::string& config) const noexcept
+{
+  return m_director_config_client.data(config);
 }
 
 bool DirectorCore::setRunlevel(const std::string& rlname) noexcept
@@ -300,56 +316,78 @@ void DirectorCore::processJob(void) noexcept
     const bool& start = pair.first;
     const std::string& config = pair.second;
 
-    if(start)
+    if(!getConfigData(config).empty()) // if the config file exists
     {
-      const std::string& executable = m_director_config_client.get(config, "/Process/Executable");
-    }
-    else
-    {
-      auto iter = m_process_map.find(config);
-      if(iter != m_process_map.end())
+      std::list<std::string> services = clean_explode(getConfigValue(config, "/Process/ProvidedServices"), LIST_DELIM);
+
+      if(start) // if starting provider
       {
-        JobController& job = iter->second;
-        microseconds_t timeout = std::strtoull(m_director_config_client.get(config, "/Exiting/Timeout").c_str(), NULL, 10);
-        posix::signal::EId signalid = decode_signal_name(m_director_config_client.get(config, "/Exiting/Signal"));
+        if(m_childproc != nullptr)
+          delete m_childproc;
 
-        uint32_t exit_type = hash(m_director_config_client.get(config, "/Exiting/ExitWaitType"));
+        m_waitstart.setServices(services);
+        microseconds_t timeout = std::strtoull(getConfigValue(config, "/Process/StartTimeout").c_str(), NULL, 10);
+        if(!timeout) // safeguard from bad config value
+          timeout = seconds(20); // 20 second timeout
+        m_waitstart.setTimeout(timeout);
 
-        // safeguard from bad config
-        if(exit_type == "HaltService"_hash && // if halting waits for services to disappear AND
-           m_director_config_client.get(config, "/Process/ProvidedServices").empty()) // no services are provided
-          exit_type = "ProcessExit"_hash; // switch exit to waiting for the process to exit
+        m_childproc = new ChildProcess();
+        m_process_map[config].add(::getpid(), m_childproc->processId());
 
-        switch(exit_type)
+        Object::connect(m_childproc->started, Object::fslot_t<void, pid_t>([this](pid_t) { jobDone(); }));
+        for(auto pair : getConfigData(config))
+          m_childproc->setOption(pair.first, pair.second);
+        if(m_childproc->invoke())
         {
-          case "HaltService"_hash: // Wait for services to disappear and assume it exits
-          {
-            m_waitexit.setServices(clean_explode(m_director_config_client.get(config, "/Process/ProvidedServices"), LIST_DELIM));
-            if(!timeout) // safeguard from bad config
-              timeout = 100000; // 1/10 second timeout
-            break;
-          }
-
-          case "AssumeExit"_hash: // just send the signal and assume it exits
-          {
-            timeout = 0; // clear the timer
-            Object::singleShot(this, &DirectorCore::jobDone); // assume it exits
-          }
-
-          default: // Unexpected value! Default to waiting for process to exit
-          case "ProcessExit"_hash: // wait for the process to exit
-          {
-            Object::connect(job.exited, Object::fslot_t<void, posix::error_t    >([this](posix::error_t    ) { jobDone(); })); // job exited properly :)
-            Object::connect(job.killed, Object::fslot_t<void, posix::signal::EId>([this](posix::signal::EId) { jobDone(); })); // job killed :/
-            m_waitexit.setPids(job.getPids());
-            if(!timeout) // safeguard from bad config
-              timeout = 10000000; // 10 second timeout
-            break;
-          }
+          //display::providerStatus(config, "starting");
         }
-        if(timeout) // if timeout is set
-          m_waitexit.setTimeout(timeout); // start timer
-        job.sendSignal(signalid); // send job the signal to exit
+      }
+      else // if stopping provider
+      {
+        auto iter = m_process_map.find(config);
+        if(iter != m_process_map.end())
+        {
+          JobController& job = iter->second;
+          microseconds_t timeout = std::strtoull(getConfigValue(config, "/Exiting/Timeout").c_str(), NULL, 10);
+          posix::signal::EId signalid = decode_signal_name(getConfigValue(config, "/Exiting/Signal"));
+          uint32_t exit_type = hash(getConfigValue(config, "/Exiting/ExitWaitType"));
+
+          // safeguard from bad config
+          if(exit_type == "HaltService"_hash && // if halting waits for services to disappear AND
+             services.empty()) // no services are provided
+            exit_type = "ProcessExit"_hash; // switch exit to waiting for the process to exit
+
+          switch(exit_type)
+          {
+            case "HaltServices"_hash: // Wait for services to disappear and assume it exits
+            {
+              m_waitexit.setServices(services);
+              if(!timeout) // safeguard from bad config value
+                timeout = seconds(1); // 1 second timeout
+              break;
+            }
+
+            case "AssumeExit"_hash: // just send the signal and assume it exits
+            {
+              timeout = 0; // never timeout
+              Object::singleShot(this, &DirectorCore::jobDone); // assume it exits
+            }
+
+            default: // Unexpected value! Default to waiting for process to exit
+            case "ProcessExit"_hash: // wait for the process to exit
+            {
+              Object::connect(job.exited, Object::fslot_t<void, posix::error_t    >([this](posix::error_t    ) { jobDone(); })); // job exited properly :)
+              Object::connect(job.killed, Object::fslot_t<void, posix::signal::EId>([this](posix::signal::EId) { jobDone(); })); // job killed :/
+              m_waitexit.setPids(job.getPids());
+              if(!timeout) // safeguard from bad config value
+                timeout = seconds(10); // 10 second timeout
+              break;
+            }
+          }
+          if(timeout) // if timeout is set
+            m_waitexit.setTimeout(timeout); // start timer
+          job.sendSignal(signalid); // send job the signal to exit
+        }
       }
     }
   }
@@ -357,10 +395,10 @@ void DirectorCore::processJob(void) noexcept
 
 void DirectorCore::jobDone(void) noexcept
 {
-  m_waitexit.clear(); // remove data and stop timer
   const std::pair<bool, std::string>& pair = m_action_queue.front(); // get the job that just finished
   const bool& start = pair.first;
   const std::string& config = pair.second;
+  //display::providerStatus(config, start ? "active" : "stopped");
   if(!start) // if job is ending a process
     m_process_map.erase(config); // remove dead process
   m_action_queue.pop(); // action has been fulfilled
@@ -369,5 +407,5 @@ void DirectorCore::jobDone(void) noexcept
 
 void DirectorCore::jobStuck(void) noexcept
 {
-
+//display::providerStatus(config, "error");
 }

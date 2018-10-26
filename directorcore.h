@@ -8,8 +8,9 @@
 
 // PDTK
 #include <object.h>
+#include <childprocess.h>
 
-// project
+// Director
 #include "jobcontroller.h"
 #include "configclient.h"
 #include "exitpending.h"
@@ -22,7 +23,7 @@ class DirectorCore : public Object,
 {
 public:
   DirectorCore(uid_t euid, gid_t egid, posix::fd_t shmid = posix::invalid_descriptor) noexcept; // take shared memory identifier from previous instance
-  virtual ~DirectorCore(void) noexcept = default;
+  ~DirectorCore(void) noexcept;
 
   bool        setRunlevel(const std::string& rlname) noexcept;
   std::string getRunlevel(void) const noexcept { return m_runlevel; }
@@ -32,9 +33,11 @@ public:
 
 private:
 // implemented for DependencySolver
-  virtual const std::string& getConfigData(const std::string& config, const std::string& key) const noexcept;
+  virtual const std::string& getConfigValue(const std::string& config, const std::string& key) const noexcept;
   virtual std::list<std::string> getConfigList(void) const noexcept;
   virtual runlevel_t getRunlevelNumber(const std::string& rlname) const noexcept;
+// privately used stortcuts
+  const std::unordered_map<std::string, std::string>& getConfigData(const std::string& config) const noexcept;
 
 // signals
   signal<const std::string> runlevel_changed;
@@ -61,6 +64,8 @@ private:
   uid_t m_euid;
   gid_t m_egid;
   ExitPending m_waitexit;
+  StartPending m_waitstart;
+  ChildProcess* m_childproc;
 };
 
 #endif // DIRECTORCORE_H
