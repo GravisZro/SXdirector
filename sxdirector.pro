@@ -55,6 +55,7 @@ SOURCES = main.cpp \
     exitpending.cpp \
     $$PDTK/application.cpp \
     $$PDTK/socket.cpp \
+    $$PDTK/childprocess.cpp \
     $$PDTK/cxxutils/vfifo.cpp \
     $$PDTK/cxxutils/configmanip.cpp \
     $$PDTK/cxxutils/syslogstream.cpp \
@@ -68,8 +69,7 @@ SOURCES = main.cpp \
     $$PDTK/specialized/FileEvent.cpp \
     $$PDTK/specialized/PollEvent.cpp \
     $$PDTK/specialized/ProcessEvent.cpp \
-    $$PDTK/specialized/TimerEvent.cpp \
-    $$PDTK/specialized/MountEvent.cpp
+    $$PDTK/specialized/TimerEvent.cpp
 
 tui:SOURCES += \
     $$PDTK/tui/widget.cpp \
@@ -87,10 +87,12 @@ HEADERS += \
     configclient.h \
     jobcontroller.h \
     dependencysolver.h \
+    exitpending.h \
     string_helpers.h \
     $$PDTK/object.h \
     $$PDTK/application.h \
     $$PDTK/socket.h \
+    $$PDTK/childprocess.h \
     $$PDTK/cxxutils/vfifo.h \
     $$PDTK/cxxutils/configmanip.h \
     $$PDTK/cxxutils/syslogstream.h \
@@ -102,7 +104,7 @@ HEADERS += \
     $$PDTK/cxxutils/hashing.h \
     $$PDTK/cxxutils/colors.h \
     $$PDTK/cxxutils/misc_helpers.h \
-    $$PDTK/cxxutils/pipedfork.h \
+    $$PDTK/cxxutils/pipedspawn.h \
     $$PDTK/cxxutils/signal_helpers.h \
     $$PDTK/specialized/fstable.h \
     $$PDTK/specialized/peercred.h \
@@ -113,9 +115,7 @@ HEADERS += \
     $$PDTK/specialized/FileEvent.h \
     $$PDTK/specialized/PollEvent.h \
     $$PDTK/specialized/ProcessEvent.h \
-    $$PDTK/specialized/TimerEvent.h \
-    $$PDTK/specialized/MountEvent.h \
-    exitpending.h
+    $$PDTK/specialized/TimerEvent.h
 
 
 tui:HEADERS += \
