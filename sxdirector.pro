@@ -8,20 +8,23 @@ CONFIG -= c++14
 #QMAKE_LFLAGS += -stdlib=libc++
 
 # universal arguments
-QMAKE_CXXFLAGS += -std=c++14
-QMAKE_CXXFLAGS += -pipe -Os
+QMAKE_CXXFLAGS += -std=c++14 -pipe
 QMAKE_CXXFLAGS += -fno-exceptions
 QMAKE_CXXFLAGS += -fno-rtti
 
-#QMAKE_CXXFLAGS += -fno-threadsafe-statics
-QMAKE_CXXFLAGS += -fno-asynchronous-unwind-tables
-#QMAKE_CXXFLAGS += -fstack-protector-all
-QMAKE_CXXFLAGS += -fstack-protector-strong
+QMAKE_CXXFLAGS_DEBUG += -O0 -g3
+QMAKE_CXXFLAGS_RELEASE += -Os
+
+
+#QMAKE_CXXFLAGS_RELEASE += -fno-threadsafe-statics
+QMAKE_CXXFLAGS_RELEASE += -fno-asynchronous-unwind-tables
+#QMAKE_CXXFLAGS_RELEASE += -fstack-protector-all
+QMAKE_CXXFLAGS_RELEASE += -fstack-protector-strong
 
 # optimizations
-QMAKE_CXXFLAGS += -fdata-sections
-QMAKE_CXXFLAGS += -ffunction-sections
-QMAKE_LFLAGS += -Wl,--gc-sections
+QMAKE_CXXFLAGS_RELEASE += -fdata-sections
+QMAKE_CXXFLAGS_RELEASE += -ffunction-sections
+QMAKE_LFLAGS_RELEASE += -Wl,--gc-sections
 
 # libraries
 LIBS += -lrt
@@ -51,6 +54,7 @@ SOURCES = main.cpp \
     configclient.cpp \
     jobcontroller.cpp \
     dependencysolver.cpp \
+    eventpending.cpp \
     string_helpers.cpp \
     $$PDTK/application.cpp \
     $$PDTK/socket.cpp \
@@ -68,8 +72,7 @@ SOURCES = main.cpp \
     $$PDTK/specialized/FileEvent.cpp \
     $$PDTK/specialized/PollEvent.cpp \
     $$PDTK/specialized/ProcessEvent.cpp \
-    $$PDTK/specialized/TimerEvent.cpp \
-    eventpending.cpp
+    $$PDTK/specialized/TimerEvent.cpp
 
 tui:SOURCES += \
     $$PDTK/tui/widget.cpp \
@@ -87,6 +90,7 @@ HEADERS += \
     configclient.h \
     jobcontroller.h \
     dependencysolver.h \
+    eventpending.h \
     string_helpers.h \
     $$PDTK/object.h \
     $$PDTK/application.h \
@@ -114,8 +118,7 @@ HEADERS += \
     $$PDTK/specialized/FileEvent.h \
     $$PDTK/specialized/PollEvent.h \
     $$PDTK/specialized/ProcessEvent.h \
-    $$PDTK/specialized/TimerEvent.h \
-    eventpending.h
+    $$PDTK/specialized/TimerEvent.h
 
 
 tui:HEADERS += \
