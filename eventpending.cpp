@@ -1,4 +1,4 @@
-#include "exitpending.h"
+#include "eventpending.h"
 
 // POSIX++
 #include <climits>

@@ -52,7 +52,6 @@ SOURCES = main.cpp \
     jobcontroller.cpp \
     dependencysolver.cpp \
     string_helpers.cpp \
-    exitpending.cpp \
     $$PDTK/application.cpp \
     $$PDTK/socket.cpp \
     $$PDTK/childprocess.cpp \
@@ -69,7 +68,8 @@ SOURCES = main.cpp \
     $$PDTK/specialized/FileEvent.cpp \
     $$PDTK/specialized/PollEvent.cpp \
     $$PDTK/specialized/ProcessEvent.cpp \
-    $$PDTK/specialized/TimerEvent.cpp
+    $$PDTK/specialized/TimerEvent.cpp \
+    eventpending.cpp
 
 tui:SOURCES += \
     $$PDTK/tui/widget.cpp \
@@ -87,7 +87,6 @@ HEADERS += \
     configclient.h \
     jobcontroller.h \
     dependencysolver.h \
-    exitpending.h \
     string_helpers.h \
     $$PDTK/object.h \
     $$PDTK/application.h \
@@ -115,7 +114,8 @@ HEADERS += \
     $$PDTK/specialized/FileEvent.h \
     $$PDTK/specialized/PollEvent.h \
     $$PDTK/specialized/ProcessEvent.h \
-    $$PDTK/specialized/TimerEvent.h
+    $$PDTK/specialized/TimerEvent.h \
+    eventpending.h
 
 
 tui:HEADERS += \

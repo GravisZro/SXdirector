@@ -13,7 +13,7 @@
 // Director
 #include "jobcontroller.h"
 #include "configclient.h"
-#include "exitpending.h"
+#include "eventpending.h"
 #include "directorconfigclient.h"
 #include "dependencysolver.h"
 
