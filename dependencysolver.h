@@ -38,7 +38,7 @@ public:
   void resolveDependencies(void) noexcept;
   runlevel_actions_t getRunlevelOrder(const std::string& runlevel) const noexcept;
 
-  virtual const std::string& getConfigData(const std::string& config, const std::string& key) const noexcept = 0;
+  virtual const std::string& getConfigValue(const std::string& config, const std::string& key) const noexcept = 0;
   virtual std::list<std::string> getConfigList(void) const noexcept = 0;
   virtual runlevel_t getRunlevelNumber(const std::string& rlname) const noexcept = 0;
 

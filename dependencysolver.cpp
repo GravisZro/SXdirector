@@ -102,7 +102,7 @@ void DependencySolver::resolveDependencies(void) noexcept
   for(const std::string& configname : getConfigList())
   {
     auto get_set = [this, configname](const std::string& source)
-                     { auto list = clean_explode(getConfigData(configname, source), LIST_DELIM);
+                     { auto list = clean_explode(getConfigValue(configname, source), LIST_DELIM);
                        return std::set<std::string>(list.begin(), list.end()); };
 
     auto merge_in = [](depinfoset_t<std::string>& dest, const std::set<std::string> source, bool is_required, bool is_active)
