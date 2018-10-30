@@ -4,7 +4,7 @@
 #include <climits>
 
 // PDTK
-#include <cxxutils/mountpoint_helpers.h>
+#include "servicecheck.h"
 #include <specialized/procstat.h>
 
 EventPending::EventPending(void) noexcept
@@ -54,17 +54,11 @@ bool EventPending::setTimeout(microseconds_t timeout) noexcept
 // test if they exist or not
 bool ExitPending::activateTrigger(void) noexcept
 {
-  char path[PATH_MAX];
   if(!m_services.empty())
   {
-    if(scfs_path == nullptr)
-      initialize_paths();
     for(const std::string& service : m_services)
-    {
-      std::snprintf(path, sizeof(path), "%s/%s", scfs_path, service.c_str());
-      if(posix::access(path, F_OK) == posix::success_response)
+      if(service_exists(service))
         return false;
-    }
   }
   else if(m_pids.empty())
   {
@@ -80,14 +74,8 @@ bool ExitPending::activateTrigger(void) noexcept
 // test if they exist or not
 bool StartPending::activateTrigger(void) noexcept
 {
-  char path[PATH_MAX];
-  if(scfs_path == nullptr)
-    initialize_paths();
   for(const std::string& service : m_services)
-  {
-    std::snprintf(path, sizeof(path), "%s/%s", scfs_path, service.c_str());
-    if(posix::access(path, F_OK) != posix::success_response)
+    if(service_exists(service))
       return false;
-  }
   return true;
 }

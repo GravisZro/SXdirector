@@ -10,10 +10,8 @@
 #include <object.h>
 #include <specialized/TimerEvent.h>
 
-
 // helpers
 template<typename T> constexpr microseconds_t seconds(T count) { return 1000000 * count; }
-
 
 class EventPending : public Object
 {
@@ -34,7 +32,6 @@ private:
   microseconds_t m_max_timeout_count;
 };
 
-
 class ExitPending : public EventPending
 {
 public:
@@ -52,7 +49,6 @@ private:
   std::list<std::pair<pid_t, pid_t>> m_pids;
   std::list<std::string> m_services;
 };
-
 
 class StartPending : public EventPending
 {
