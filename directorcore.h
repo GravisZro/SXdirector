@@ -9,6 +9,7 @@
 // PDTK
 #include <object.h>
 #include <childprocess.h>
+#include <cxxutils/syslogstream.h>
 
 // Director
 #include "jobcontroller.h"
@@ -66,6 +67,7 @@ private:
   ExitPending m_waitexit;
   StartPending m_waitstart;
   ChildProcess* m_childproc;
+  ErrorLogStream m_log;
 };
 
 #endif // DIRECTORCORE_H

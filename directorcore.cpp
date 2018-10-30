@@ -15,12 +15,13 @@
 #include <cxxutils/syslogstream.h>
 #include <cxxutils/vterm.h>
 #include <cxxutils/hashing.h>
+#include <cxxutils/translate.h>
 #include <specialized/procstat.h>
 #include <specialized/proclist.h>
 
 // Director
 #include "string_helpers.h"
-
+#include "servicecheck.h"
 
 static_assert(sizeof(size_t) == sizeof(std::unordered_map<int, int>::size_type), "bad size");
 static_assert(sizeof(size_t) == sizeof(std::list<int>::size_type), "bad size");
@@ -31,10 +32,9 @@ DirectorCore::DirectorCore(uid_t euid, gid_t egid, posix::fd_t shmid) noexcept
   if(!shmLoad(shmid)) // if loading from shared memory failed
     buildProcessMap(); // rebuild the process map from scratch
 
-  Object::connect(m_waitexit.event_timeout , this, &DirectorCore::jobStuck); // job did not exit in allotted time :(
-  Object::connect(m_waitexit.event_trigger , this, &DirectorCore::jobDone ); // job exited properly :)
-  Object::connect(m_waitstart.event_timeout, this, &DirectorCore::jobStuck); // job did not exit in allotted time :(
   Object::connect(m_waitstart.event_trigger, this, &DirectorCore::jobDone ); // job exited properly :)
+  Object::connect(m_waitexit.event_trigger , this, &DirectorCore::jobDone ); // job exited properly :)
+
   Object::connect(m_config_client.synchronized, this, &DirectorCore::multiSyncReloadSettings); // config has been updated
   Object::connect(m_director_config_client.synchronized, this, &DirectorCore::multiSyncReloadSettings); // config has been updated
 }
@@ -49,7 +49,7 @@ DirectorCore::~DirectorCore(void) noexcept
 // prevent m_config_client and m_director_config_client from invoking reloadSettings() multiple times
 void DirectorCore::multiSyncReloadSettings(void) noexcept
 {
-  if(m_synchronized_count < 2) // ensure fully synchronized to avoid multiple reloads
+  if(m_synchronized_count < 1) // ensure fully synchronized to avoid multiple reloads
     ++m_synchronized_count;
   else
   {
@@ -249,12 +249,14 @@ void DirectorCore::reloadSettings(void) noexcept
     resolveDependencies();
 
     if(!m_action_queue.empty()) // sync interrupted job queue
-      Object::singleShot(this, &DirectorCore::processJob); // start the next job
+    {
+      m_action_queue = std::queue<std::pair<bool, std::string>>(); // clear action queue
+      setRunlevel(m_runlevel); // restart runlevel change
+    }
     else if(m_runlevel.empty()) // runlevel is empty if the director was just just started
     {
-      Object::connect(runlevel_changed, Object::fslot_t<void, const std::string>([this](const std::string& rlname) noexcept {
-        terminal::write("oh no: %s\n", rlname.c_str());
-        reloadBinary(); }));
+      Object::connect(runlevel_changed,
+                      Object::fslot_t<void, const std::string>([this](const std::string&) noexcept { reloadBinary(); }));
       setRunlevel("bootstrap"); // switch to the system init runlevel
     }
     else if(m_runlevel == "bootstrap")
@@ -316,7 +318,11 @@ void DirectorCore::processJob(void) noexcept
     const bool& start = pair.first;
     const std::string& config = pair.second;
 
-    if(!getConfigData(config).empty()) // if the config file exists
+    if(getConfigData(config).empty()) // if the config file dons NOT exist
+    {
+      m_log << "No configuration for provider %1 was found."_xlate << config << posix::eom;
+    }
+    else // if the config file exists
     {
       std::list<std::string> services = clean_explode(getConfigValue(config, "/Process/ProvidedServices"), LIST_DELIM);
 
@@ -324,22 +330,63 @@ void DirectorCore::processJob(void) noexcept
       {
         if(m_childproc != nullptr)
           delete m_childproc;
-
-        m_waitstart.setServices(services);
-        microseconds_t timeout = std::strtoull(getConfigValue(config, "/Process/StartTimeout").c_str(), NULL, 10);
-        if(!timeout) // safeguard from bad config value
-          timeout = seconds(20); // 20 second timeout
-        m_waitstart.setTimeout(timeout);
-
-        m_childproc = new ChildProcess();
-        m_process_map[config].add(::getpid(), m_childproc->processId());
-
-        Object::connect(m_childproc->started, Object::fslot_t<void, pid_t>([this](pid_t) { jobDone(); }));
-        for(auto pair : getConfigData(config))
-          m_childproc->setOption(pair.first, pair.second);
-        if(m_childproc->invoke())
+        auto iter = m_process_map.find(config); // look to see if already started
+        if(iter == m_process_map.end()) // if not already started
         {
-          //display::providerStatus(config, "starting");
+          for(const std::string& service : clean_explode(getConfigValue(config, "/Requirements/ActiveServices"), LIST_DELIM))
+            if(!service_exists(service)) // service should exists
+              m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: service %2 must be active"_xlate << config << service << "/Requirements/ActiveServices" << posix::eom; // record error
+
+          for(const std::string& service : clean_explode(getConfigValue(config, "/Requirements/InactiveServices"), LIST_DELIM))
+            if(service_exists(service)) // service should NOT exist
+              m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: service %2 must be inactive"_xlate << config << service << "/Requirements/InactiveServices" << posix::eom; // record error
+
+          for(const std::string& provider : clean_explode(getConfigValue(config, "/Requirements/ActiveProviders"), LIST_DELIM))
+            if(m_process_map.find(provider) == m_process_map.end()) // provider should be running
+              m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: provider %2 must be active"_xlate << config << provider << "/Requirements/ActiveProviders" << posix::eom; // record error
+
+          for(const std::string& provider : clean_explode(getConfigValue(config, "/Requirements/InactiveProviders"), LIST_DELIM))
+            if(m_process_map.find(provider) != m_process_map.end()) // provider should NOT be running
+              m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: provider %2 must be inactive"_xlate << config << provider << "/Requirements/InactiveProviders" << posix::eom; // record error
+
+          if(m_log.empty()) // process requirements are satisified
+          {
+            m_waitstart.setServices(services);
+            Object::disconnect(m_waitstart.event_timeout);
+            Object::connect(m_waitstart.event_timeout,
+                            Object::fslot_t<void>([this, &config, &services]()
+                            {
+                              for(const std::string& service : services) // check all services (if any)
+                                if(!service_exists(service)) // ensure service exists
+                                  m_log << "Provider: %1\nField: %3\nError: timed out waiting for service to start\nCause: service %2 does not exist."_xlate << config << service << "/Process/ProvidedServices" << posix::eom; // record error
+                              jobStuck(); // job did not exit in allotted time :(
+                            }));
+
+            microseconds_t timeout = std::strtoull(getConfigValue(config, "/Process/StartTimeout").c_str(), NULL, 10);
+            if(!timeout) // safeguard from bad config value
+              timeout = seconds(20); // 20 second timeout
+            m_waitstart.setTimeout(timeout);
+
+            m_childproc = new ChildProcess();
+            m_process_map[config].add(::getpid(), m_childproc->processId());
+
+            Object::connect(m_childproc->started, Object::fslot_t<void, pid_t>([this](pid_t) { jobDone(); }));
+            for(auto pair : getConfigData(config))
+              m_childproc->setOption(pair.first, pair.second);
+            if(m_childproc->invoke())
+            {
+              //display::providerStatus(config, "starting");
+            }
+          }
+        }
+        else // if already started
+        {
+          for(const std::string& service : services) // check all services (if any)
+            if(!service_exists(service)) // ensure service exists
+              m_log << "Provider: %1\nField: %3\nError: not providing service\nCause: service %2 does not exist."_xlate << config << service << "/Process/ProvidedServices" << posix::eom; // record error
+
+          if(m_log.empty()) // if service sockets extant (if have services)
+            Object::singleShot(this, &DirectorCore::jobDone); // job is done
         }
       }
       else // if stopping provider
@@ -352,6 +399,8 @@ void DirectorCore::processJob(void) noexcept
           posix::signal::EId signalid = decode_signal_name(getConfigValue(config, "/Exiting/Signal"));
           uint32_t exit_type = hash(getConfigValue(config, "/Exiting/ExitWaitType"));
 
+          Object::disconnect(m_waitexit.event_timeout);
+
           // safeguard from bad config
           if(exit_type == "HaltService"_hash && // if halting waits for services to disappear AND
              services.empty()) // no services are provided
@@ -361,6 +410,14 @@ void DirectorCore::processJob(void) noexcept
           {
             case "HaltServices"_hash: // Wait for services to disappear and assume it exits
             {
+              Object::connect(m_waitexit.event_timeout,
+                              Object::fslot_t<void>([this, &config, &services]()
+                              {
+                                for(const std::string& service : services) // check all services (if any)
+                                  if(!service_exists(service)) // ensure service exists
+                                    m_log << "Provider: %1\nField: %3\nError: timed out waiting for service to end\nCause: service %2 does not exist."_xlate << config << service << "/Process/ProvidedServices" << posix::eom; // record error
+                                jobStuck(); // job did not exit in allotted time :(
+                              }));
               m_waitexit.setServices(services);
               if(!timeout) // safeguard from bad config value
                 timeout = seconds(1); // 1 second timeout
@@ -378,6 +435,14 @@ void DirectorCore::processJob(void) noexcept
             {
               Object::connect(job.exited, Object::fslot_t<void, posix::error_t    >([this](posix::error_t    ) { jobDone(); })); // job exited properly :)
               Object::connect(job.killed, Object::fslot_t<void, posix::signal::EId>([this](posix::signal::EId) { jobDone(); })); // job killed :/
+              Object::connect(m_waitexit.event_timeout,
+                              Object::fslot_t<void>([this, &config, pid_pairs = job.getPids()]()
+                              {
+                                std::string pidlist;
+                                m_log << "Provider: %1\nField: %3\nError: timed out waiting for provider to exit\nCause: PID(s) %2 exist."_xlate << config << pidlist << "/Process/ProvidedServices" << posix::eom; // record error
+                                jobStuck(); // job did not exit in allotted time :(
+                              }));
+
               m_waitexit.setPids(job.getPids());
               if(!timeout) // safeguard from bad config value
                 timeout = seconds(10); // 10 second timeout
@@ -390,6 +455,9 @@ void DirectorCore::processJob(void) noexcept
         }
       }
     }
+
+    if(!m_log.empty()) // if there were arrors
+      Object::singleShot(this, &DirectorCore::jobStuck); // job is stuck
   }
 }
 
@@ -408,4 +476,10 @@ void DirectorCore::jobDone(void) noexcept
 void DirectorCore::jobStuck(void) noexcept
 {
 //display::providerStatus(config, "error");
+  for(const std::string& message : m_log.messages())
+  {
+
+  }
+
+  m_log.clear();
 }
