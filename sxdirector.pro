@@ -55,6 +55,7 @@ SOURCES = main.cpp \
     jobcontroller.cpp \
     dependencysolver.cpp \
     eventpending.cpp \
+    servicecheck.cpp \
     string_helpers.cpp \
     $$PDTK/application.cpp \
     $$PDTK/socket.cpp \
@@ -91,6 +92,7 @@ HEADERS += \
     jobcontroller.h \
     dependencysolver.h \
     eventpending.h \
+    servicecheck.h \
     string_helpers.h \
     $$PDTK/object.h \
     $$PDTK/application.h \
