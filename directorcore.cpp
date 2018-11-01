@@ -404,7 +404,7 @@ void DirectorCore::processJob(void) noexcept
           // safeguard from bad config
           if(exit_type == "HaltService"_hash && // if halting waits for services to disappear AND
              services.empty()) // no services are provided
-            exit_type = "ProcessExit"_hash; // switch exit to waiting for the process to exit
+            exit_type = "ProcessTermination"_hash; // switch exit to waiting for the process to stop existing
 
           switch(exit_type)
           {
@@ -430,8 +430,8 @@ void DirectorCore::processJob(void) noexcept
               Object::singleShot(this, &DirectorCore::jobDone); // assume it exits
             }
 
-            default: // Unexpected value! Default to waiting for process to exit
-            case "ProcessExit"_hash: // wait for the process to exit
+            default: // Unexpected value! Default to waiting for process to stop existing
+            case "ProcessTermination"_hash: // wait for the process to stop existing
             {
               Object::connect(job.exited, Object::fslot_t<void, posix::error_t    >([this](posix::error_t    ) { jobDone(); })); // job exited properly :)
               Object::connect(job.killed, Object::fslot_t<void, posix::signal::EId>([this](posix::signal::EId) { jobDone(); })); // job killed :/
