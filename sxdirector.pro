@@ -45,8 +45,8 @@ QMAKE_LFLAGS += -L/usr/lib/x86_64-linux-musl -dynamic-linker /lib/ld-musl-x86_64
 LIBS += -lc++
 }
 
-PDTK = ../pdtk
-INCLUDEPATH += $$PDTK
+PUT = ../put
+INCLUDEPATH += $$PUT
 
 SOURCES = main.cpp \
     directorcore.cpp \
@@ -57,33 +57,33 @@ SOURCES = main.cpp \
     eventpending.cpp \
     servicecheck.cpp \
     string_helpers.cpp \
-    $$PDTK/application.cpp \
-    $$PDTK/socket.cpp \
-    $$PDTK/childprocess.cpp \
-    $$PDTK/cxxutils/vfifo.cpp \
-    $$PDTK/cxxutils/configmanip.cpp \
-    $$PDTK/cxxutils/syslogstream.cpp \
-    $$PDTK/cxxutils/translate.cpp \
-    $$PDTK/cxxutils/mountpoint_helpers.cpp \
-    $$PDTK/specialized/fstable.cpp \
-    $$PDTK/specialized/peercred.cpp \
-    $$PDTK/specialized/procstat.cpp \
-    $$PDTK/specialized/proclist.cpp \
-    $$PDTK/specialized/eventbackend.cpp \
-    $$PDTK/specialized/FileEvent.cpp \
-    $$PDTK/specialized/PollEvent.cpp \
-    $$PDTK/specialized/ProcessEvent.cpp \
-    $$PDTK/specialized/TimerEvent.cpp
+    $$PUT/application.cpp \
+    $$PUT/socket.cpp \
+    $$PUT/childprocess.cpp \
+    $$PUT/cxxutils/vfifo.cpp \
+    $$PUT/cxxutils/configmanip.cpp \
+    $$PUT/cxxutils/syslogstream.cpp \
+    $$PUT/cxxutils/translate.cpp \
+    $$PUT/cxxutils/mountpoint_helpers.cpp \
+    $$PUT/specialized/fstable.cpp \
+    $$PUT/specialized/peercred.cpp \
+    $$PUT/specialized/procstat.cpp \
+    $$PUT/specialized/proclist.cpp \
+    $$PUT/specialized/eventbackend.cpp \
+    $$PUT/specialized/FileEvent.cpp \
+    $$PUT/specialized/PollEvent.cpp \
+    $$PUT/specialized/ProcessEvent.cpp \
+    $$PUT/specialized/TimerEvent.cpp
 
 tui:SOURCES += \
-    $$PDTK/tui/widget.cpp \
-    $$PDTK/tui/window.cpp \
-    $$PDTK/tui/screen.cpp \
-    $$PDTK/tui/tuiutils.cpp \
-    $$PDTK/tui/layout.cpp \
-    $$PDTK/tui/layoutitem.cpp \
-    $$PDTK/tui/event.cpp \
-    $$PDTK/tui/keyboard.cpp
+    $$PUT/tui/widget.cpp \
+    $$PUT/tui/window.cpp \
+    $$PUT/tui/screen.cpp \
+    $$PUT/tui/tuiutils.cpp \
+    $$PUT/tui/layout.cpp \
+    $$PUT/tui/layoutitem.cpp \
+    $$PUT/tui/event.cpp \
+    $$PUT/tui/keyboard.cpp
 
 HEADERS += \
     directorcore.h \
@@ -94,43 +94,43 @@ HEADERS += \
     eventpending.h \
     servicecheck.h \
     string_helpers.h \
-    $$PDTK/object.h \
-    $$PDTK/application.h \
-    $$PDTK/socket.h \
-    $$PDTK/childprocess.h \
-    $$PDTK/cxxutils/vfifo.h \
-    $$PDTK/cxxutils/configmanip.h \
-    $$PDTK/cxxutils/syslogstream.h \
-    $$PDTK/cxxutils/translate.h \
-    $$PDTK/cxxutils/mountpoint_helpers.h \
-    $$PDTK/cxxutils/posix_helpers.h \
-    $$PDTK/cxxutils/socket_helpers.h \
-    $$PDTK/cxxutils/error_helpers.h \
-    $$PDTK/cxxutils/hashing.h \
-    $$PDTK/cxxutils/colors.h \
-    $$PDTK/cxxutils/misc_helpers.h \
-    $$PDTK/cxxutils/pipedspawn.h \
-    $$PDTK/cxxutils/signal_helpers.h \
-    $$PDTK/specialized/fstable.h \
-    $$PDTK/specialized/peercred.h \
-    $$PDTK/specialized/procstat.h \
-    $$PDTK/specialized/proclist.h \
-    $$PDTK/specialized/capabilities.h \
-    $$PDTK/specialized/eventbackend.h \
-    $$PDTK/specialized/FileEvent.h \
-    $$PDTK/specialized/PollEvent.h \
-    $$PDTK/specialized/ProcessEvent.h \
-    $$PDTK/specialized/TimerEvent.h
+    $$PUT/object.h \
+    $$PUT/application.h \
+    $$PUT/socket.h \
+    $$PUT/childprocess.h \
+    $$PUT/cxxutils/vfifo.h \
+    $$PUT/cxxutils/configmanip.h \
+    $$PUT/cxxutils/syslogstream.h \
+    $$PUT/cxxutils/translate.h \
+    $$PUT/cxxutils/mountpoint_helpers.h \
+    $$PUT/cxxutils/posix_helpers.h \
+    $$PUT/cxxutils/socket_helpers.h \
+    $$PUT/cxxutils/error_helpers.h \
+    $$PUT/cxxutils/hashing.h \
+    $$PUT/cxxutils/colors.h \
+    $$PUT/cxxutils/misc_helpers.h \
+    $$PUT/cxxutils/pipedspawn.h \
+    $$PUT/cxxutils/signal_helpers.h \
+    $$PUT/specialized/fstable.h \
+    $$PUT/specialized/peercred.h \
+    $$PUT/specialized/procstat.h \
+    $$PUT/specialized/proclist.h \
+    $$PUT/specialized/capabilities.h \
+    $$PUT/specialized/eventbackend.h \
+    $$PUT/specialized/FileEvent.h \
+    $$PUT/specialized/PollEvent.h \
+    $$PUT/specialized/ProcessEvent.h \
+    $$PUT/specialized/TimerEvent.h
 
 
 tui:HEADERS += \
-    $$PDTK/tui/widget.h \
-    $$PDTK/tui/window.h \
-    $$PDTK/tui/screen.h \
-    $$PDTK/tui/tuiutils.h \
-    $$PDTK/tui/layout.h \
-    $$PDTK/tui/layoutitem.h \
-    $$PDTK/tui/tuitypes.h \
-    $$PDTK/tui/sizepolicy.h \
-    $$PDTK/tui/event.h \
-    $$PDTK/tui/keyboard.h
+    $$PUT/tui/widget.h \
+    $$PUT/tui/window.h \
+    $$PUT/tui/screen.h \
+    $$PUT/tui/tuiutils.h \
+    $$PUT/tui/layout.h \
+    $$PUT/tui/layoutitem.h \
+    $$PUT/tui/tuitypes.h \
+    $$PUT/tui/sizepolicy.h \
+    $$PUT/tui/event.h \
+    $$PUT/tui/keyboard.h
