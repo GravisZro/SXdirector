@@ -310,7 +310,7 @@ void DirectorCore::processJob(void) noexcept
   if(m_action_queue.empty())
   {
     terminal::write("runlevel is now: '%s'\n", m_runlevel.c_str());
-    Object::enqueue_copy(runlevel_changed, m_runlevel);
+    Object::enqueue(runlevel_changed, m_runlevel);
   }
   else
   {
