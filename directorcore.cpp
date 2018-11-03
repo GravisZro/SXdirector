@@ -362,7 +362,7 @@ void DirectorCore::processJob(void) noexcept
                               jobStuck(); // job did not exit in allotted time :(
                             }));
 
-            microseconds_t timeout = std::strtoull(getConfigValue(config, "/Process/StartTimeout").c_str(), NULL, 10);
+            milliseconds_t timeout = std::atoi(getConfigValue(config, "/Process/StartTimeout").c_str());
             if(!timeout) // safeguard from bad config value
               timeout = seconds(20); // 20 second timeout
             m_waitstart.setTimeout(timeout);
@@ -395,7 +395,7 @@ void DirectorCore::processJob(void) noexcept
         if(iter != m_process_map.end())
         {
           JobController& job = iter->second;
-          microseconds_t timeout = std::strtoull(getConfigValue(config, "/Exiting/Timeout").c_str(), NULL, 10);
+          milliseconds_t timeout = std::atoi(getConfigValue(config, "/Exiting/Timeout").c_str());
           posix::signal::EId signalid = decode_signal_name(getConfigValue(config, "/Exiting/Signal"));
           uint32_t exit_type = hash(getConfigValue(config, "/Exiting/ExitWaitType"));
 
