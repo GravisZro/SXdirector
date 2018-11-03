@@ -28,7 +28,7 @@ void EventPending::timerExpired(void) noexcept
 }
 
 // Ensure the timer doesn't check to frequently or infrequently
-bool EventPending::setTimeout(microseconds_t timeout) noexcept
+bool EventPending::setTimeout(milliseconds_t timeout) noexcept
 {
   if(timeout > seconds(10)) // if timeout is longer than 10 seconds
   {

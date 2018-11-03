@@ -11,7 +11,7 @@
 #include <specialized/TimerEvent.h>
 
 // helpers
-template<typename T> constexpr microseconds_t seconds(T count) { return 1000000 * count; }
+template<typename T> constexpr milliseconds_t seconds(T count) { return 1000 * count; }
 
 class EventPending : public Object
 {
@@ -19,7 +19,7 @@ public:
   EventPending(void) noexcept;
   virtual ~EventPending(void) noexcept = default;
 
-  bool setTimeout(microseconds_t timeout) noexcept;
+  bool setTimeout(milliseconds_t timeout) noexcept;
 
   signal<> event_timeout;
   signal<> event_trigger;
@@ -28,8 +28,8 @@ protected:
 private:
   void timerExpired(void) noexcept;
   TimerEvent m_timer;
-  microseconds_t m_timeout_count;
-  microseconds_t m_max_timeout_count;
+  milliseconds_t m_timeout_count;
+  milliseconds_t m_max_timeout_count;
 };
 
 class ExitPending : public EventPending
