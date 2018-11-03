@@ -9,7 +9,7 @@ CONFIG += rtti_off
 #QMAKE_CXXFLAGS += -stdlib=libc++
 #QMAKE_LFLAGS += -stdlib=libc++
 QMAKE_CXXFLAGS += -fconstexpr-depth=256
-QMAKE_CXXFLAGS += -fconstexpr-steps=900000000
+#QMAKE_CXXFLAGS += -fconstexpr-steps=900000000
 
 # universal arguments
 QMAKE_CXXFLAGS += -fno-rtti
@@ -62,6 +62,7 @@ SOURCES = main.cpp \
     $$PUT/application.cpp \
     $$PUT/socket.cpp \
     $$PUT/childprocess.cpp \
+    $$PUT/cxxutils/mutex.cpp \
     $$PUT/cxxutils/vfifo.cpp \
     $$PUT/cxxutils/configmanip.cpp \
     $$PUT/cxxutils/syslogstream.cpp \
@@ -100,6 +101,7 @@ HEADERS += \
     $$PUT/application.h \
     $$PUT/socket.h \
     $$PUT/childprocess.h \
+    $$PUT/cxxutils/mutex.h \
     $$PUT/cxxutils/vfifo.h \
     $$PUT/cxxutils/configmanip.h \
     $$PUT/cxxutils/syslogstream.h \
