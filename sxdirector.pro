@@ -1,15 +1,17 @@
 TEMPLATE = app
 CONFIG -= qt
-CONFIG -= c++11
-CONFIG -= c++14
+CONFIG += c++14
+CONFIG += strict_c++
+CONFIG += exceptions_off
+CONFIG += rtti_off
 
 # FOR CLANG
 #QMAKE_CXXFLAGS += -stdlib=libc++
 #QMAKE_LFLAGS += -stdlib=libc++
+QMAKE_CXXFLAGS += -fconstexpr-depth=256
+QMAKE_CXXFLAGS += -fconstexpr-steps=900000000
 
 # universal arguments
-QMAKE_CXXFLAGS += -std=c++14 -pipe
-QMAKE_CXXFLAGS += -fno-exceptions
 QMAKE_CXXFLAGS += -fno-rtti
 
 QMAKE_CXXFLAGS_DEBUG += -O0 -g3
