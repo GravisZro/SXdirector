@@ -11,8 +11,8 @@
 class JobController : public Object
 {
 public:
-  JobController (void) noexcept = default;
-  ~JobController(void) noexcept = default;
+  JobController (void) noexcept { }
+  ~JobController(void) noexcept { }
 
   void add(pid_t parent_pid, pid_t child_pid) noexcept;
   const std::list<std::pair<pid_t, pid_t>>& getPids(void) noexcept { return m_pids; }

@@ -17,7 +17,7 @@ class EventPending : public Object
 {
 public:
   EventPending(void) noexcept;
-  virtual ~EventPending(void) noexcept = default;
+  virtual ~EventPending(void) noexcept { }
 
   bool setTimeout(milliseconds_t timeout) noexcept;
 
@@ -35,8 +35,8 @@ private:
 class ExitPending : public EventPending
 {
 public:
-  ExitPending (void) noexcept = default;
-  ~ExitPending(void) noexcept = default;
+  ExitPending (void) noexcept { }
+  ~ExitPending(void) noexcept { }
 
   void setPids(const std::list<std::pair<pid_t, pid_t>>& pids) noexcept
     { m_services.clear(); m_pids = pids; }
@@ -53,8 +53,8 @@ private:
 class StartPending : public EventPending
 {
 public:
-  StartPending (void) noexcept = default;
-  ~StartPending(void) noexcept = default;
+  StartPending (void) noexcept { }
+  ~StartPending(void) noexcept { }
 
   void setServices(const std::list<std::string>& services) noexcept
     { m_services = services; }
