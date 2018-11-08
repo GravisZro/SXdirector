@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) noexcept
 */
   Application app;
   std::signal(SIGPIPE, SIG_IGN);
-  //std::signal(SIGINT, [](int){ printf("quit!\n"); Application::quit(0); }); // exit gracefully
+  std::signal(SIGINT, [](int){ printf("quit!\n"); Application::quit(0); }); // exit gracefully
 
   posix::fd_t shmemid = posix::invalid_descriptor;
   if(argc > 1 && std::atoi(argv[1]))
