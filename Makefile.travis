@@ -28,8 +28,8 @@ endif
 
 PUT           = ./put
 INCPATH       = -I$(PUT)
-CFLAGS        = -pipe -g -Os -Wall -W -fPIC $(DEFINES) $(INCPATH)
-CXXFLAGS      = $(CFLAGS) -fno-exceptions -fno-rtti
+CFLAGS        = $(CFLAGS) -pipe -g -Os -Wall -W -fPIC $(DEFINES) $(INCPATH)
+CXXFLAGS      = $(CXXFLAGS) $(CFLAGS) -fno-exceptions -fno-rtti
 LDFLAGS       = 
 
 TARGET        = sxdirector

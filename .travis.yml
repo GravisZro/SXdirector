@@ -51,6 +51,7 @@ matrix:
           packages: ['clang-3.9', 'libstdc++-4.9-dev', 'libcap-dev']
       env:
         - COMPILER=clang++-3.9
+	- CXXFLAGS=-fconstexpr-steps=900000000
 
     - os: linux
       dist: trusty
@@ -61,20 +62,23 @@ matrix:
           packages: ['clang-4.0', 'libstdc++-4.9-dev', 'libcap-dev']
       env:
         - COMPILER=clang++-4.0
+	- CXXFLAGS=-fconstexpr-steps=900000000
 
     - os: osx
       osx_image: xcode8.3
       compiler: clang
       env:
         - COMPILER=clang++
+	- CXXFLAGS=-fconstexpr-steps=900000000
 
     - os: osx
       osx_image: xcode9
       compiler: clang
       env:
         - COMPILER=clang++
+	- CXXFLAGS=-fconstexpr-steps=900000000
 
 git:
   submodules: true
 script:
-  - make -e CXX=$COMPILER -e VERBOSE=true -f Makefile.travis
+  - make -e CXX=$COMPILER -e CXXFLAGS=$CXXFLAGS -e VERBOSE=true -f Makefile.travis
