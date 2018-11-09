@@ -72,13 +72,13 @@ SOURCES = main.cpp \
     $$PUT/cxxutils/configmanip.cpp \
     $$PUT/cxxutils/syslogstream.cpp \
     $$PUT/cxxutils/translate.cpp \
-    $$PUT/cxxutils/mountpoint_helpers.cpp \
     $$PUT/specialized/eventbackend.cpp \
     $$PUT/specialized/mutex.cpp \
-    $$PUT/specialized/fstable.cpp \
     $$PUT/specialized/peercred.cpp \
     $$PUT/specialized/procstat.cpp \
     $$PUT/specialized/proclist.cpp \
+    $$PUT/specialized/fstable.cpp \
+    $$PUT/specialized/mountpoints.cpp \
     $$PUT/specialized/FileEvent.cpp \
     $$PUT/specialized/PollEvent.cpp \
     $$PUT/specialized/ProcessEvent.cpp \
@@ -111,7 +111,6 @@ HEADERS += \
     $$PUT/cxxutils/configmanip.h \
     $$PUT/cxxutils/syslogstream.h \
     $$PUT/cxxutils/translate.h \
-    $$PUT/cxxutils/mountpoint_helpers.h \
     $$PUT/cxxutils/posix_helpers.h \
     $$PUT/cxxutils/socket_helpers.h \
     $$PUT/cxxutils/error_helpers.h \
@@ -123,10 +122,11 @@ HEADERS += \
     $$PUT/specialized/osdetect.h \
     $$PUT/specialized/eventbackend.h \
     $$PUT/specialized/mutex.h \
-    $$PUT/specialized/fstable.h \
     $$PUT/specialized/peercred.h \
     $$PUT/specialized/procstat.h \
     $$PUT/specialized/proclist.h \
+    $$PUT/specialized/fstable.h \
+    $$PUT/specialized/mountpoints.h \
     $$PUT/specialized/capabilities.h \
     $$PUT/specialized/FileEvent.h \
     $$PUT/specialized/PollEvent.h \

@@ -5,7 +5,7 @@
 void JobController::add(pid_t parent_pid, pid_t child_pid) noexcept
 {
   process_state_t data;
-  if(::procstat(child_pid, data) != posix::error_response) // if the process (still) exists AND
+  if(::procstat(child_pid, data)) // if the process (still) exists AND
   {
     m_pids.emplace_back(parent_pid, child_pid);
     m_procs.emplace_back(child_pid, ProcessEvent::Fork | ProcessEvent::Exit); // add as child

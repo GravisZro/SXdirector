@@ -69,7 +69,7 @@ bool DirectorCore::buildProcessMap(void) noexcept
     for(pid_t pid : pidlist)
     {
       std::memset(reinterpret_cast<void*>(&state), 0, sizeof(state));
-      if(procstat(pid, state) == posix::success_response && // if get process state works AND
+      if(procstat(pid, state) && // if get process state works AND
          (!state.parent_process_id || state.parent_process_id == thispid)) // process has unknown parent process OR director is the parent process
         for(const std::string& config : getConfigList()) // try each config
           if(getConfigValue(config, "/Process/Executable") == state.executable) // if the executable matches
@@ -77,7 +77,7 @@ bool DirectorCore::buildProcessMap(void) noexcept
             m_process_map[config].add(thispid, pid); // claim this as a managed process
             std::memset(reinterpret_cast<void*>(&state), 0, sizeof(state)); // wipe process state for safety
             for(pid_t childpid : pidlist)
-              if(procstat(childpid, state) == posix::success_response && // if get process state works AND
+              if(procstat(childpid, state) && // if get process state works AND
                  state.parent_process_id == pid) // process is a child of this parent pid
                 m_process_map[config].add(pid, childpid); // claim this as a managed process
           }
@@ -193,7 +193,7 @@ void DirectorCore::reloadBinary(void) noexcept
   {
     // reload process
     process_state_t data;
-    if(::procstat(::getpid(), data) == posix::success_response)
+    if(::procstat(::getpid(), data))
       ::execl(data.executable.c_str(), data.executable.c_str(), std::to_string(shmid).c_str(), NULL);
     terminal::write("%s%s\n", terminal::critical, "Failed to reload Director from binary!");
     Application::quit(errno);

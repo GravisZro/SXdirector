@@ -64,7 +64,7 @@ bool ExitPending::activateTrigger(void) noexcept
   {
     struct process_state_t state;
     for(const std::pair<pid_t, pid_t>& pid_pair : m_pids)
-      if(procstat(pid_pair.second, state) == posix::success_response &&
+      if(procstat(pid_pair.second, state) &&
          state.state != Zombie)
         return false;
   }

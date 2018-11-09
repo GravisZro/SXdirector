@@ -49,13 +49,13 @@ SOURCES       = main.cpp \
 		$(PUT)/cxxutils/configmanip.cpp \
 		$(PUT)/cxxutils/syslogstream.cpp \
 		$(PUT)/cxxutils/translate.cpp \
-		$(PUT)/cxxutils/mountpoint_helpers.cpp \
 		$(PUT)/specialized/eventbackend.cpp \
 		$(PUT)/specialized/mutex.cpp \
-		$(PUT)/specialized/fstable.cpp \
+		$(PUT)/specialized/peercred.cpp \
 		$(PUT)/specialized/procstat.cpp \
 		$(PUT)/specialized/proclist.cpp \
-		$(PUT)/specialized/peercred.cpp \
+		$(PUT)/specialized/fstable.cpp \
+		$(PUT)/specialized/mountpoints.cpp \
 		$(PUT)/specialized/FileEvent.cpp \
 		$(PUT)/specialized/PollEvent.cpp \
 		$(PUT)/specialized/ProcessEvent.cpp \

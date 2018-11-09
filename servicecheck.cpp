@@ -5,7 +5,7 @@
 
 // PDTK
 #include <cxxutils/posix_helpers.h>
-#include <cxxutils/mountpoint_helpers.h>
+#include <specialized/mountpoints.h>
 
 
 static char path[PATH_MAX];
