@@ -428,6 +428,7 @@ void DirectorCore::processJob(void) noexcept
             {
               timeout = 0; // never timeout
               Object::singleShot(this, &DirectorCore::jobDone); // assume it exits
+              break;
             }
 
             default: // Unexpected value! Default to waiting for process to stop existing
@@ -475,6 +476,10 @@ void DirectorCore::jobDone(void) noexcept
 
 void DirectorCore::jobStuck(void) noexcept
 {
+  const std::pair<bool, std::string>& pair = m_action_queue.front(); // get the job that just finished
+  const bool& start = pair.first;
+  const std::string& config = pair.second;
+
 //display::providerStatus(config, "error");
   for(const std::string& message : m_log.messages())
   {
