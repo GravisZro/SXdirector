@@ -10,9 +10,6 @@
 #include <object.h>
 #include <specialized/TimerEvent.h>
 
-// helpers
-template<typename T> constexpr milliseconds_t seconds(T count) { return 1000 * count; }
-
 class EventPending : public Object
 {
 public:
