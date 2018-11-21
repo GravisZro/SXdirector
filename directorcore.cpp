@@ -62,7 +62,7 @@ bool DirectorCore::buildProcessMap(void) noexcept
 {
   // search existing processes for those we should be managing (not 100% foolproof)
   process_state_t state;
-  std::vector<pid_t> pidlist;
+  std::set<pid_t> pidlist;
   const pid_t thispid = ::getpid();
   if(proclist(pidlist) == posix::success_response)
   {
