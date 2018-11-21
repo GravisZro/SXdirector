@@ -72,7 +72,6 @@ SOURCES = main.cpp \
     $$PUT/cxxutils/configmanip.cpp \
     $$PUT/cxxutils/syslogstream.cpp \
     $$PUT/cxxutils/translate.cpp \
-    $$PUT/cxxutils/stringtoken.cpp \
     $$PUT/specialized/eventbackend.cpp \
     $$PUT/specialized/mutex.cpp \
     $$PUT/specialized/peercred.cpp \
@@ -112,7 +111,6 @@ HEADERS += \
     $$PUT/cxxutils/configmanip.h \
     $$PUT/cxxutils/syslogstream.h \
     $$PUT/cxxutils/translate.h \
-    $$PUT/cxxutils/stringtoken.h \
     $$PUT/cxxutils/posix_helpers.h \
     $$PUT/cxxutils/socket_helpers.h \
     $$PUT/cxxutils/error_helpers.h \
