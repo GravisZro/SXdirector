@@ -6,7 +6,7 @@
 
 // PDTK
 #include <object.h>
-#include <specialized/ProcessEvent.h>
+#include <specialized/processevent.h>
 
 class JobController : public Object
 {

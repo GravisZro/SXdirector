@@ -8,7 +8,7 @@
 
 // PDTK
 #include <object.h>
-#include <specialized/TimerEvent.h>
+#include <specialized/timerevent.h>
 
 class EventPending : public Object
 {
