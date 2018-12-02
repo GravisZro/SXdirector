@@ -79,10 +79,10 @@ SOURCES = main.cpp \
     $$PUT/specialized/proclist.cpp \
     $$PUT/specialized/fstable.cpp \
     $$PUT/specialized/mountpoints.cpp \
-    $$PUT/specialized/FileEvent.cpp \
-    $$PUT/specialized/PollEvent.cpp \
-    $$PUT/specialized/ProcessEvent.cpp \
-    $$PUT/specialized/TimerEvent.cpp
+    $$PUT/specialized/fileevent.cpp \
+    $$PUT/specialized/pollevent.cpp \
+    $$PUT/specialized/processevent.cpp \
+    $$PUT/specialized/timerevent.cpp
 
 tui:SOURCES += \
     $$PUT/tui/widget.cpp \
@@ -128,10 +128,10 @@ HEADERS += \
     $$PUT/specialized/fstable.h \
     $$PUT/specialized/mountpoints.h \
     $$PUT/specialized/capabilities.h \
-    $$PUT/specialized/FileEvent.h \
-    $$PUT/specialized/PollEvent.h \
-    $$PUT/specialized/ProcessEvent.h \
-    $$PUT/specialized/TimerEvent.h
+    $$PUT/specialized/fileevent.h \
+    $$PUT/specialized/pollevent.h \
+    $$PUT/specialized/processevent.h \
+    $$PUT/specialized/timerevent.h
 
 tui:HEADERS += \
     $$PUT/tui/widget.h \
