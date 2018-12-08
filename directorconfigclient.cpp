@@ -31,49 +31,49 @@
 static const char* extract_provider_name(const char* filename)
 {
   char provider[NAME_MAX] = { 0 };
-  const char* start = std::strrchr(filename, '/');
-  const char* end   = std::strrchr(filename, '.');
+  const char* start = posix::strrchr(filename, '/');
+  const char* end   = posix::strrchr(filename, '.');
 
   if(start == nullptr || // if '/' NOT found OR
      end   == nullptr || // '.' found AND
      end < start || // occur in the incorrect order OR
-     std::strcmp(end, ".conf")) // doesn't end with ".conf"
+     posix::strcmp(end, ".conf")) // doesn't end with ".conf"
     return nullptr;
-  return std::strncpy(provider, start + 1, posix::size_t(end - start + 1)); // extract provider name
+  return posix::strncpy(provider, start + 1, posix::size_t(end - start + 1)); // extract provider name
 }
 
 static const char* director_configfilename(const char* filename)
 {
   // construct config filename
   static char fullpath[PATH_MAX];
-  std::memset(fullpath, 0, PATH_MAX);
-  if(std::snprintf(fullpath, PATH_MAX, "%s/%s", DIRECTOR_CONFIG_DIR, filename) == posix::error_response) // I don't how this could fail
+  posix::memset(fullpath, 0, PATH_MAX);
+  if(posix::snprintf(fullpath, PATH_MAX, "%s/%s", DIRECTOR_CONFIG_DIR, filename) == posix::error_response) // I don't how this could fail
     return nullptr; // unable to build config filename
   return fullpath;
 }
 
 static bool readconfig(const char* name, std::string& buffer)
 {
-  std::FILE* file = std::fopen(name, "rb");
+  posix::FILE* file = posix::fopen(name, "rb");
 
   if(file == nullptr)
   {
     posix::syslog << posix::priority::warning
                   << "Unable to open file: %1 : %2"
                   << name
-                  << std::strerror(errno)
+                  << posix::strerror(errno)
                   << posix::eom;
     return false;
   }
 
   buffer.clear();
-  buffer.resize(posix::size_t(std::ftell(file)), '\n');
+  buffer.resize(posix::size_t(posix::ftell(file)), '\n');
   if(buffer.size())
   {
-    std::rewind(file);
-    std::fread(const_cast<char*>(buffer.data()), sizeof(std::string::value_type), buffer.size(), file);
+    posix::rewind(file);
+    posix::fread(const_cast<char*>(buffer.data()), sizeof(std::string::value_type), buffer.size(), file);
   }
-  std::fclose(file);
+  posix::fclose(file);
   return true;
 }
 #endif
@@ -125,7 +125,7 @@ void DirectorConfigClient::resync(posix::error_t errcode) noexcept
         posix::syslog << posix::priority::warning
                       << "Connection error for socket file %1 : %2"
                       << SCFS_PATH CONFIG_DIRECTOR_SOCKET
-                      << std::strerror(errno)
+                      << posix::strerror(errno)
                       << posix::eom;
     }
 #ifdef NO_CONFIG_FALLBACK
@@ -166,7 +166,7 @@ void DirectorConfigClient::resync(posix::error_t errcode) noexcept
           posix::syslog << posix::priority::critical
                         << "Unable to read Director configuation file: %1 : %2"
                         << filename
-                        << std::strerror(errno)
+                        << posix::strerror(errno)
                         << posix::eom;
         }
         else if(!tmp_config.importText(buffer))

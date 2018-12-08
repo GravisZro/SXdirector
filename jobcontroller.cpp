@@ -18,7 +18,7 @@ void JobController::add(pid_t parent_pid, pid_t child_pid) noexcept
                       { remove(pid); if(m_procs.empty()) { Object::enqueue(exited, rval); } }));
 
     Object::connect(proc.killed,
-                    Object::fslot_t<void, pid_t, posix::signal::EId>([this](pid_t pid, int rval) noexcept
+                    Object::fslot_t<void, pid_t, posix::Signal::EId>([this](pid_t pid, int rval) noexcept
                       { remove(pid); if(m_procs.empty()) { Object::enqueue(exited, rval); } }));
   }
 }
@@ -44,10 +44,10 @@ void JobController::remove(pid_t pid) noexcept
       { m_procs.erase(piter); break; } // erase and bail out of loop
 }
 
-bool JobController::sendSignal(posix::signal::EId signum) noexcept
+bool JobController::sendSignal(posix::Signal::EId signum) noexcept
 {
   bool sent = true;
   for(auto& proc : m_procs)
-    sent &= posix::signal::send(proc.pid(), signum);
+    sent &= posix::Signal::send(proc.pid(), signum);
   return sent;
 }

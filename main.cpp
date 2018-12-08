@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) noexcept
   if(::capget(caps, caps))
     posix::syslog << posix::priority::critical
                   << "Failed to get capabilities: %1"_xlate
-                  << std::strerror(errno)
+                  << posix::strerror(errno)
                   << posix::eom;
 
   caps.effective
@@ -73,13 +73,13 @@ int main(int argc, char *argv[]) noexcept
   if(::capset(caps, caps) != posix::success_response)
     posix::syslog << posix::priority::critical
                   << "Failed to set capabilities: %1"_xlate
-                  << std::strerror(errno)
+                  << posix::strerror(errno)
                   << posix::eom;
 #endif
 /*
-  if((std::strcmp(posix::getgroupname(egid), DIRECTOR_GROUPNAME) && // if current effective group name is NOT what we want AND
+  if((posix::strcmp(posix::getgroupname(egid), DIRECTOR_GROUPNAME) && // if current effective group name is NOT what we want AND
       !posix::setegid(posix::getgroupid(DIRECTOR_GROUPNAME))) || // unable to change effective group id
-     (std::strcmp(posix::getusername(euid), DIRECTOR_USERNAME) && // if current effective user name is NOT what we want AND
+     (posix::strcmp(posix::getusername(euid), DIRECTOR_USERNAME) && // if current effective user name is NOT what we want AND
       !posix::seteuid(posix::getuserid (DIRECTOR_USERNAME)))) // unable to change effective user id
   {
     posix::syslog << posix::priority::error

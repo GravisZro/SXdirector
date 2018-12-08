@@ -30,26 +30,26 @@
 
 static bool readconfig(const char* name, std::string& buffer) noexcept
 {
-  std::FILE* file = std::fopen(name, "rb");
+  posix::FILE* file = posix::fopen(name, "rb");
 
   if(file == nullptr)
   {
     posix::syslog << posix::priority::warning
                   << "Unable to open file: %1 : %2"
                   << name
-                  << std::strerror(errno)
+                  << posix::strerror(errno)
                   << posix::eom;
     return false;
   }
 
   buffer.clear();
-  buffer.resize(posix::size_t(std::ftell(file)), '\n');
+  buffer.resize(posix::size_t(posix::ftell(file)), '\n');
   if(buffer.size())
   {
-    std::rewind(file);
-    std::fread(const_cast<char*>(buffer.data()), sizeof(std::string::value_type), buffer.size(), file);
+    posix::rewind(file);
+    posix::fread(const_cast<char*>(buffer.data()), sizeof(std::string::value_type), buffer.size(), file);
   }
-  std::fclose(file);
+  posix::fclose(file);
   return true;
 }
 
@@ -93,7 +93,7 @@ void ConfigClient::resync(posix::error_t errcode) noexcept
         posix::syslog << posix::priority::warning
                       << "Connection error for %1 : %2"
                       << SCFS_PATH CONFIG_IO_SOCKET
-                      << std::strerror(errno)
+                      << posix::strerror(errno)
                       << posix::eom;
     }
 #ifdef NO_CONFIG_FALLBACK
@@ -110,7 +110,7 @@ void ConfigClient::resync(posix::error_t errcode) noexcept
       posix::syslog << posix::priority::critical
                     << "Unable to read Director provider configuation file: %1 : %2"
                     << (CONFIG_CONFIG_PATH "/" DIRECTOR_CONFIG_FILE)
-                    << std::strerror(errno)
+                    << posix::strerror(errno)
                     << posix::eom;
     }
     else if(!tmp_config.importText(buffer))

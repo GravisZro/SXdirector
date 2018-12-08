@@ -17,7 +17,7 @@
 std::list<std::string> clean_explode(const std::string& str, char delim) noexcept;
 
 
-posix::signal::EId decode_signal_name(const std::string& signal_name) noexcept;
+posix::Signal::EId decode_signal_name(const std::string& signal_name) noexcept;
 
 
 #endif // STRING_HELPERS_H

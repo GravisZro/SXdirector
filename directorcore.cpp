@@ -68,14 +68,14 @@ bool DirectorCore::buildProcessMap(void) noexcept
   {
     for(pid_t pid : pidlist)
     {
-      std::memset(reinterpret_cast<void*>(&state), 0, sizeof(state));
+      posix::memset(reinterpret_cast<void*>(&state), 0, sizeof(state));
       if(procstat(pid, state) && // if get process state works AND
          (!state.parent_process_id || state.parent_process_id == thispid)) // process has unknown parent process OR director is the parent process
         for(const std::string& config : getConfigList()) // try each config
           if(getConfigValue(config, "/Process/Executable") == state.executable) // if the executable matches
           {
             m_process_map[config].add(thispid, pid); // claim this as a managed process
-            std::memset(reinterpret_cast<void*>(&state), 0, sizeof(state)); // wipe process state for safety
+            posix::memset(reinterpret_cast<void*>(&state), 0, sizeof(state)); // wipe process state for safety
             for(pid_t childpid : pidlist)
               if(procstat(childpid, state) && // if get process state works AND
                  state.parent_process_id == pid) // process is a child of this parent pid
@@ -109,7 +109,7 @@ posix::fd_t DirectorCore::shmStore(void) noexcept
     }
     else
     {
-      std::memset(reload_buffer, 0, buffer_size); // zero out for safety
+      posix::memset(reload_buffer, 0, buffer_size); // zero out for safety
       // save state to shared memory
       vfifo storage(reload_buffer, posix::ssize_t(buffer_size)); // give it the shared memory buffer
 
@@ -137,7 +137,7 @@ bool DirectorCore::shmLoad(posix::fd_t shmid) noexcept
   if(reload_buffer != reinterpret_cast<char*>(-1)) // if not an error
   {
     shmid_ds stat_data;
-    std::memset(&stat_data, 0, sizeof(stat_data));
+    posix::memset(&stat_data, 0, sizeof(stat_data));
     if(::shmctl(shmid, IPC_STAT, &stat_data) == posix::success_response)
     {
       buffer_size = stat_data.shm_segsz;
@@ -163,7 +163,7 @@ bool DirectorCore::shmLoad(posix::fd_t shmid) noexcept
           proc.add(parent_pid, child_pid);
         }
       }
-      std::memset(reload_buffer, 0, buffer_size); // zero out shared memory for safety
+      posix::memset(reload_buffer, 0, buffer_size); // zero out shared memory for safety
     }
     ::shmctl(shmid, IPC_RMID, nullptr); // release shared memory
     return true;
@@ -177,7 +177,7 @@ void DirectorCore::reloadBinary(void) noexcept
   if(shmid == posix::invalid_descriptor)
     posix::syslog << posix::priority::error
                   << "Unable to allocate shared memory for reload buffer: %1"
-                  << std::strerror(errno)
+                  << posix::strerror(errno)
                   << posix::eom;
 
 
@@ -202,7 +202,7 @@ void DirectorCore::reloadBinary(void) noexcept
 
 
 inline bool starts_with(const std::string& str, const char* seek)
-  { return std::memcmp(str.data(), seek, strlen(seek)) == 0; }
+  { return posix::memcmp(str.data(), seek, strlen(seek)) == 0; }
 
 void DirectorCore::reloadSettings(void) noexcept
 {
@@ -396,7 +396,7 @@ void DirectorCore::processJob(void) noexcept
         {
           JobController& job = iter->second;
           milliseconds_t timeout = std::atoi(getConfigValue(config, "/Exiting/Timeout").c_str());
-          posix::signal::EId signalid = decode_signal_name(getConfigValue(config, "/Exiting/Signal"));
+          posix::Signal::EId signalid = decode_signal_name(getConfigValue(config, "/Exiting/Signal"));
           uint32_t exit_type = hash(getConfigValue(config, "/Exiting/ExitWaitType"));
 
           Object::disconnect(m_waitexit.event_timeout);
@@ -435,7 +435,7 @@ void DirectorCore::processJob(void) noexcept
             case "ProcessTermination"_hash: // wait for the process to stop existing
             {
               Object::connect(job.exited, Object::fslot_t<void, posix::error_t    >([this](posix::error_t    ) { jobDone(); })); // job exited properly :)
-              Object::connect(job.killed, Object::fslot_t<void, posix::signal::EId>([this](posix::signal::EId) { jobDone(); })); // job killed :/
+              Object::connect(job.killed, Object::fslot_t<void, posix::Signal::EId>([this](posix::Signal::EId) { jobDone(); })); // job killed :/
               Object::connect(m_waitexit.event_timeout,
                               Object::fslot_t<void>([this, &config, pid_pairs = job.getPids()]()
                               {
