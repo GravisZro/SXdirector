@@ -1,9 +1,3 @@
-// STL
-#include <functional>
-
-// POSIX++
-#include <cstdlib> // for std::atexit
-#include <csignal> // for std::signal
 
 // PDTK
 #include <object.h>
@@ -16,17 +10,20 @@
 #include "directorcore.h"
 
 #ifndef DIRECTOR_APP_NAME
-#define DIRECTOR_APP_NAME       "SXdirector"
+# define DIRECTOR_APP_NAME      "SXdirector"
 #endif
 
 #ifndef DIRECTOR_USERNAME
-#define DIRECTOR_USERNAME       "director"
+# define DIRECTOR_USERNAME      "director"
 #endif
 
 #ifndef DIRECTOR_GROUPNAME
-#define DIRECTOR_GROUPNAME      DIRECTOR_USERNAME
+# define DIRECTOR_GROUPNAME     DIRECTOR_USERNAME
 #endif
 
+#if defined(__linux__) && KERNEL_VERSION_CODE >= KERNEL_VERSION(2,1,44)
+# include <sys/prctl.h>
+#endif
 
 void exiting(void) noexcept
 {
@@ -41,10 +38,31 @@ int main(int argc, char *argv[]) noexcept
 
   uid_t euid = posix::geteuid();
   gid_t egid = posix::getegid();
-  std::atexit(exiting);
+  posix::atexit(exiting);
   posix::syslog.open(DIRECTOR_APP_NAME, posix::facility::provider);
 
-#if 0 && defined(POSIX_DRAFT_1E)
+#if defined(PR_SET_CHILD_SUBREAPER)
+  if(::prctl(PR_SET_CHILD_SUBREAPER, 1) != posix::success_response &&
+     posix::getpid() != 1)
+  {
+    posix::syslog << posix::priority::warning
+                  << "%1\n%2"
+                  << "Director was unable to install a child process subreaper and is not process identifier 1."_xlate
+                  << "Director may lose track of processes that fork excessively."_xlate
+                  << posix::eom;
+  }
+#else
+  if(posix::getpid() != 1)
+  {
+    posix::syslog << posix::priority::warning
+                  << "%1\n%2"
+                  << "Director is not running as process identifier 1."_xlate
+                  << "Director may lose track of processes that fork excessively."_xlate
+                  << posix::eom;
+  }
+#endif
+
+#if defined(POSIX_DRAFT_1E)
   if(::prctl(PR_SET_KEEPCAPS, 1) != posix::success_response)
   {
     posix::syslog << posix::priority::error
@@ -90,8 +108,8 @@ int main(int argc, char *argv[]) noexcept
   }
 */
   Application app;
-  std::signal(SIGPIPE, SIG_IGN);
-  std::signal(SIGINT, [](int){ printf("quit!\n"); Application::quit(0); }); // exit gracefully
+  posix::signal(SIGPIPE, SIG_IGN);
+  posix::signal(SIGINT, [](int){ printf("quit!\n"); Application::quit(0); }); // exit gracefully
 
   posix::fd_t shmemid = posix::invalid_descriptor;
   if(argc > 1 && std::atoi(argv[1]))

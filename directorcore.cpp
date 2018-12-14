@@ -3,11 +3,6 @@
 // POSIX
 #include <sys/shm.h> // shared memory
 
-// POSIX++
-#include <climits>
-#include <cstdlib>
-#include <cassert>
-
 // STL
 #include <string>
 
@@ -23,8 +18,8 @@
 #include "string_helpers.h"
 #include "servicecheck.h"
 
-static_assert(sizeof(size_t) == sizeof(std::unordered_map<int, int>::size_type), "bad size");
-static_assert(sizeof(size_t) == sizeof(std::list<int>::size_type), "bad size");
+static_assert(sizeof(posix::size_t) == sizeof(std::unordered_map<int, int>::size_type), "bad size");
+static_assert(sizeof(posix::size_t) == sizeof(std::list<int>::size_type), "bad size");
 
 DirectorCore::DirectorCore(uid_t euid, gid_t egid, posix::fd_t shmid) noexcept
   : m_euid(euid), m_egid(egid), m_childproc(nullptr)
@@ -63,7 +58,7 @@ bool DirectorCore::buildProcessMap(void) noexcept
   // search existing processes for those we should be managing (not 100% foolproof)
   process_state_t state;
   std::set<pid_t> pidlist;
-  const pid_t thispid = ::getpid();
+  const pid_t thispid = posix::getpid();
   if(proclist(pidlist) == posix::success_response)
   {
     for(pid_t pid : pidlist)
@@ -91,10 +86,10 @@ posix::fd_t DirectorCore::shmStore(void) noexcept
 {
   // buffer size calculation
   posix::size_t buffer_size = 4 + m_runlevel.size() +
-                              4 + sizeof(size_t);
+                              4 + sizeof(posix::size_t);
   for(auto& pair : m_process_map)
     buffer_size += 4 + pair.first.size() + // string
-                   4 + sizeof(size_t) + // list size
+                   4 + sizeof(posix::size_t) + // list size
                    (4 * pair.second.getPids().size() * 2 * sizeof(pid_t)); // list of pairs
   // end buffer size calculation
 
@@ -133,8 +128,10 @@ bool DirectorCore::shmLoad(posix::fd_t shmid) noexcept
   posix::size_t buffer_size = 0;
   char* reload_buffer = nullptr;
 
-  reload_buffer = reinterpret_cast<char*>(::shmat(shmid, nullptr, 0)); // retrieve shared memory
-  if(reload_buffer != reinterpret_cast<char*>(-1)) // if not an error
+  if(shmid != posix::invalid_descriptor)
+    reload_buffer = reinterpret_cast<char*>(::shmat(shmid, nullptr, 0)); // retrieve shared memory
+  if(reload_buffer != nullptr &&
+     reload_buffer != reinterpret_cast<char*>(-1)) // if not an error
   {
     shmid_ds stat_data;
     posix::memset(&stat_data, 0, sizeof(stat_data));
@@ -142,8 +139,8 @@ bool DirectorCore::shmLoad(posix::fd_t shmid) noexcept
     {
       buffer_size = stat_data.shm_segsz;
       std::string name;
-      size_t job_count = 0;
-      size_t pid_count = 0;
+      posix::size_t job_count = 0;
+      posix::size_t pid_count = 0;
       pid_t parent_pid = 0;
       pid_t child_pid = 0;
 
@@ -153,11 +150,11 @@ bool DirectorCore::shmLoad(posix::fd_t shmid) noexcept
 
       storage >> m_runlevel;
       storage >> job_count;
-      for(size_t i = 0; i < job_count; ++i)
+      for(posix::size_t i = 0; i < job_count; ++i)
       {
         storage >> name >> pid_count;
         auto proc = m_process_map[name];
-        for(size_t j = 0; j < pid_count; ++j)
+        for(posix::size_t j = 0; j < pid_count; ++j)
         {
           storage >> parent_pid >> child_pid;
           proc.add(parent_pid, child_pid);
@@ -193,8 +190,8 @@ void DirectorCore::reloadBinary(void) noexcept
   {
     // reload process
     process_state_t data;
-    if(::procstat(::getpid(), data))
-      ::execl(data.executable.c_str(), data.executable.c_str(), std::to_string(shmid).c_str(), NULL);
+    if(procstat(posix::getpid(), data))
+      posix::execl(data.executable.c_str(), data.executable.c_str(), std::to_string(shmid).c_str(), NULL);
     terminal::write("%s%s\n", terminal::critical, "Failed to reload Director from binary!");
     Application::quit(errno);
   }
@@ -368,7 +365,7 @@ void DirectorCore::processJob(void) noexcept
             m_waitstart.setTimeout(timeout);
 
             m_childproc = new ChildProcess();
-            m_process_map[config].add(::getpid(), m_childproc->processId());
+            m_process_map[config].add(posix::getpid(), m_childproc->processId());
 
             Object::connect(m_childproc->started, Object::fslot_t<void, pid_t>([this](pid_t) { jobDone(); }));
             for(auto pair : getConfigData(config))
