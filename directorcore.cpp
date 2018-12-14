@@ -184,7 +184,7 @@ void DirectorCore::reloadBinary(void) noexcept
     posix::syslog << posix::priority::error
                   << "Unable to restore effective UID and effective GID."
                   << posix::eom;
-    Application::quit(posix::error_t(std::errc::permission_denied));
+    Application::quit(posix::error_t(posix::errc::permission_denied));
   }
   else
   {

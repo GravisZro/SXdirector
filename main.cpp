@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) noexcept
     posix::syslog << posix::priority::error
                   << "Director must be launched with the ability to manipulate process capabilities"_xlate
                   << posix::eom;
-    std::exit(int(std::errc::permission_denied));
+    posix::exit(int(posix::errc::permission_denied));
   }
 
   capability_data_t caps;
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) noexcept
                   << posix::strerror(errno)
                   << posix::eom;
 #endif
-/*
+
   if((posix::strcmp(posix::getgroupname(egid), DIRECTOR_GROUPNAME) && // if current effective group name is NOT what we want AND
       !posix::setegid(posix::getgroupid(DIRECTOR_GROUPNAME))) || // unable to change effective group id
      (posix::strcmp(posix::getusername(euid), DIRECTOR_USERNAME) && // if current effective user name is NOT what we want AND
@@ -104,26 +104,28 @@ int main(int argc, char *argv[]) noexcept
                   << "Director must be launched as user/group \"%1\" or have permissions to seteuid/setegid"_xlate
                   << DIRECTOR_USERNAME
                   << posix::eom;
-    std::exit(posix::error_t(std::errc::permission_denied));
+//    posix::exit(posix::error_t(posix::errc::permission_denied));
   }
-*/
   Application app;
   posix::signal(SIGPIPE, SIG_IGN);
-  posix::signal(SIGINT, [](int){ printf("quit!\n"); Application::quit(0); }); // exit gracefully
 
   posix::fd_t shmemid = posix::invalid_descriptor;
-  if(argc > 1 && std::atoi(argv[1]))
-    shmemid = std::atoi(argv[1]);
+  if(argc > 1 && posix::atoi(argv[1]))
+    shmemid = posix::atoi(argv[1]);
   DirectorCore core(euid, egid, shmemid);
-/*
+
+#if defined(DEBUG)
+  posix::signal(SIGINT, [](int){ posix::printf("quit!\n"); Application::quit(0); }); // exit gracefully
+#else
   static std::function<void(void)> reload = [&core]() noexcept { core.reloadBinary(); }; // function to invoke program reload
-  std::signal(SIGINT, [](int) noexcept
+  posix::signal(SIGINT, [](int) noexcept
   {
     posix::syslog << posix::priority::critical
                   << "Signal interupt caught.  Service management provider (Director) is reloading."_xlate
                   << posix::eom;
     Object::singleShot(reload);
   }); // queue function to invoke program reload
-*/
+#endif
+
   return app.exec();
 }
