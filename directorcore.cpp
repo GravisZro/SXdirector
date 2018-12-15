@@ -392,7 +392,7 @@ void DirectorCore::processJob(void) noexcept
         if(iter != m_process_map.end())
         {
           JobController& job = iter->second;
-          milliseconds_t timeout = std::atoi(getConfigValue(config, "/Exiting/Timeout").c_str());
+          milliseconds_t timeout = std::stoi(getConfigValue(config, "/Exiting/Timeout"));
           posix::Signal::EId signalid = decode_signal_name(getConfigValue(config, "/Exiting/Signal"));
           uint32_t exit_type = hash(getConfigValue(config, "/Exiting/ExitWaitType"));
 
