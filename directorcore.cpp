@@ -225,7 +225,7 @@ void DirectorCore::reloadSettings(void) noexcept
         {
           bool numeric = true;
           for(auto c : pair.second)
-            numeric &= std::isdigit(c);
+            numeric &= posix::isdigit(c);
           if(numeric)
            rl = runlevel_t(std::stoi(pair.second)); // attempt to convert to an unsigned number
         }
@@ -359,7 +359,7 @@ void DirectorCore::processJob(void) noexcept
                               jobStuck(); // job did not exit in allotted time :(
                             }));
 
-            milliseconds_t timeout = std::atoi(getConfigValue(config, "/Process/StartTimeout").c_str());
+            milliseconds_t timeout = std::stoi(getConfigValue(config, "/Process/StartTimeout"));
             if(!timeout) // safeguard from bad config value
               timeout = seconds(20); // 20 second timeout
             m_waitstart.setTimeout(timeout);
