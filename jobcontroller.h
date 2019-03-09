@@ -11,7 +11,7 @@
 class JobController : public Object
 {
 public:
-  JobController (void) noexcept = default;
+  JobController (void) noexcept { }
   ~JobController(void) noexcept = default;
 
   void add(pid_t parent_pid, pid_t child_pid) noexcept;
