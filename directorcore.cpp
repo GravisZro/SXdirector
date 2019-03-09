@@ -22,13 +22,10 @@ static_assert(sizeof(posix::size_t) == sizeof(std::unordered_map<int, int>::size
 static_assert(sizeof(posix::size_t) == sizeof(std::list<int>::size_type), "bad size");
 
 DirectorCore::DirectorCore(uid_t euid, gid_t egid, posix::fd_t shmid) noexcept
-  : m_euid(euid), m_egid(egid), m_childproc(nullptr)
+  : m_euid(euid), m_egid(egid)
 {
   if(!shmLoad(shmid)) // if loading from shared memory failed
     buildProcessMap(); // rebuild the process map from scratch
-
-  Object::connect(m_waitstart.event_trigger, this, &DirectorCore::jobDone ); // job exited properly :)
-  Object::connect(m_waitexit.event_trigger , this, &DirectorCore::jobDone ); // job exited properly :)
 
   Object::connect(m_config_client.synchronized, this, &DirectorCore::multiSyncReloadSettings); // config has been updated
   Object::connect(m_director_config_client.synchronized, this, &DirectorCore::multiSyncReloadSettings); // config has been updated
@@ -36,20 +33,16 @@ DirectorCore::DirectorCore(uid_t euid, gid_t egid, posix::fd_t shmid) noexcept
 
 DirectorCore::~DirectorCore(void) noexcept
 {
-  if(m_childproc != nullptr)
-    delete m_childproc;
-  m_childproc = nullptr;
 }
 
 // prevent m_config_client and m_director_config_client from invoking reloadSettings() multiple times
 void DirectorCore::multiSyncReloadSettings(void) noexcept
 {
-  if(m_synchronized_count < 1) // ensure fully synchronized to avoid multiple reloads
-    ++m_synchronized_count;
-  else
+  ++m_synchronized_count;
+  if(m_synchronized_count == 2) // ensure fully synchronized to avoid multiple reloads
   {
-    m_synchronized_count = 0;
-    reloadSettings();
+    m_synchronized_count = 0; // reset synch count for next sync
+    reloadSettings(); // actually reload settings
   }
 }
 
@@ -69,12 +62,12 @@ bool DirectorCore::buildProcessMap(void) noexcept
         for(const std::string& config : getConfigList()) // try each config
           if(getConfigValue(config, "/Process/Executable") == state.executable) // if the executable matches
           {
-            m_process_map[config].add(thispid, pid); // claim this as a managed process
+            m_process_map[config]->add(thispid, pid); // claim this as a managed process
             posix::memset(reinterpret_cast<void*>(&state), 0, sizeof(state)); // wipe process state for safety
             for(pid_t childpid : pidlist)
               if(procstat(childpid, state) && // if get process state works AND
                  state.parent_process_id == pid) // process is a child of this parent pid
-                m_process_map[config].add(pid, childpid); // claim this as a managed process
+                m_process_map[config]->add(pid, childpid); // claim this as a managed process
           }
     }
     return true;
@@ -90,7 +83,7 @@ posix::fd_t DirectorCore::shmStore(void) noexcept
   for(auto& pair : m_process_map)
     buffer_size += 4 + pair.first.size() + // string
                    4 + sizeof(posix::size_t) + // list size
-                   (4 * pair.second.getPids().size() * 2 * sizeof(pid_t)); // list of pairs
+                   (4 * pair.second->getPids().size() * 2 * sizeof(pid_t)); // list of pairs
   // end buffer size calculation
 
   posix::fd_t shmid = ::shmget(IPC_PRIVATE, buffer_size, IPC_CREAT | SHM_R | SHM_W); // create shared memory segment
@@ -113,7 +106,7 @@ posix::fd_t DirectorCore::shmStore(void) noexcept
       for(auto& pair : m_process_map)
       {
         storage << pair.first;
-        auto list = pair.second.getPids();
+        auto list = pair.second->getPids();
         storage << list.size();
         for(auto& pair : list)
           storage << pair.first << pair.second;
@@ -153,11 +146,11 @@ bool DirectorCore::shmLoad(posix::fd_t shmid) noexcept
       for(posix::size_t i = 0; i < job_count; ++i)
       {
         storage >> name >> pid_count;
-        auto proc = m_process_map[name];
+        std::shared_ptr<JobContainer> proc = m_process_map[name];
         for(posix::size_t j = 0; j < pid_count; ++j)
         {
           storage >> parent_pid >> child_pid;
-          proc.add(parent_pid, child_pid);
+          proc->add(parent_pid, child_pid);
         }
       }
       posix::memset(reload_buffer, 0, buffer_size); // zero out shared memory for safety
@@ -201,42 +194,46 @@ void DirectorCore::reloadBinary(void) noexcept
 inline bool starts_with(const std::string& str, const char* seek)
   { return posix::memcmp(str.data(), seek, strlen(seek)) == 0; }
 
+inline DependencySolver::runlevel_t convert_to_runlevel(const std::string& str)
+{
+  bool numeric = true; // for keeping track if every character is a digit
+  int rl = 0;
+  for(char c : str) // test each character to ensure this is a positive integer
+    if(numeric &= posix::isdigit(c))
+      rl = (rl * 10) + (c - '0');
+
+  return (!numeric || rl < 0 || rl > INT16_MAX) ? DependencySolver::invalid_runlevel : rl;
+}
+
 void DirectorCore::reloadSettings(void) noexcept
 {
   if(m_config_client.isSynchronized() && // ensure fully synchronized to avoid multiple reloads
      m_director_config_client.isSynchronized())
   {
-    // destroy all existing data
-    m_runlevel_aliases.clear();
-     // special runlevels
-    m_runlevel_aliases.emplace("bootstrap", -1);
-    m_runlevel_aliases.emplace("reboot"   , -2);
-    m_runlevel_aliases.emplace("halt"     , -3);
-    m_runlevel_aliases.emplace("poweroff" , -4);
+    // replace existing runlevels with only special runlevels
+    m_runlevel_aliases = { {"bootstrap", -1},
+                           {"reboot"   , -2},
+                           {"halt"     , -3},
+                           {"poweroff" , -4} };
 
     // add custom runlevel aliases
-    for(auto& pair : m_config_client.data()) // check every config client entry
+    for(const std::pair<std::string, std::string>& pair : m_config_client.data()) // check every config client entry
     {
       if(starts_with(pair.first, "/Runlevels/")) // if this is a runlevel alias entry
       {
         runlevel_t rl = invalid_runlevel;
+        // std::map<std::string, runlevel_t>::const_iterator iter =
         auto iter = m_runlevel_aliases.find(pair.second);
         if(iter == m_runlevel_aliases.end()) // if runlevel value doesn't exist
-        {
-          bool numeric = true;
-          for(auto c : pair.second)
-            numeric &= posix::isdigit(c);
-          if(numeric)
-           rl = runlevel_t(std::stoi(pair.second)); // attempt to convert to an unsigned number
-        }
-        else
-          rl = iter->second;
+          rl = convert_to_runlevel(pair.second); // convert string value to runlevel value (if possible)
+        else // if runlevel value already exists
+          rl = iter->second; // copy value
 
         m_runlevel_aliases.emplace(pair.first.substr(sizeof("/Runlevels/") - 1), rl); // add new alias (or ignore if already existing)
 
         if(rl == invalid_runlevel)
           posix::syslog << posix::priority::warning
-                        << "Runlevel alias \"%1\" is invalid because runlevel alias \"%2\" is undefined or invalid."
+                        << "Runlevel alias \"%1\" is invalid because \"%2\" is neither an existing runlevel alias nor a valid positive 16-bit integer."
                         << pair.first.substr(sizeof("/Runlevels/") - 1)
                         << pair.second
                         << posix::eom;
@@ -253,7 +250,7 @@ void DirectorCore::reloadSettings(void) noexcept
     else if(m_runlevel.empty()) // runlevel is empty if the director was just just started
     {
       Object::connect(runlevel_changed,
-                      Object::fslot_t<void, const std::string>([this](const std::string&) noexcept { reloadBinary(); }));
+                      [this](const std::string&) noexcept { reloadBinary(); });
       setRunlevel("bootstrap"); // switch to the system init runlevel
     }
     else if(m_runlevel == "bootstrap")
@@ -274,6 +271,7 @@ inline std::list<std::string> DirectorCore::getConfigList(void) const noexcept
 
 inline DependencySolver::runlevel_t DirectorCore::getRunlevelNumber(const std::string& rlname) const noexcept
 {
+  // std::map<std::string, runlevel_t>::const_iterator iter =
   auto iter = m_runlevel_aliases.find(rlname);
   if(iter == m_runlevel_aliases.end())
     return invalid_runlevel;
@@ -325,54 +323,54 @@ void DirectorCore::processJob(void) noexcept
 
       if(start) // if starting provider
       {
-        if(m_childproc != nullptr)
-          delete m_childproc;
+        // std::unordered_map<std::string, std::shared_ptr<JobContainer>>::const_iterator iter =
         auto iter = m_process_map.find(config); // look to see if already started
         if(iter == m_process_map.end()) // if not already started
         {
           for(const std::string& service : clean_explode(getConfigValue(config, "/Requirements/ActiveServices"), LIST_DELIM))
             if(!service_exists(service)) // service should exists
-              m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: service %2 must be active"_xlate << config << service << "/Requirements/ActiveServices" << posix::eom; // record error
+              m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: service %2 must be active"_xlate
+                    << config
+                    << service
+                    << "/Requirements/ActiveServices"
+                    << posix::eom; // record error
 
           for(const std::string& service : clean_explode(getConfigValue(config, "/Requirements/InactiveServices"), LIST_DELIM))
             if(service_exists(service)) // service should NOT exist
-              m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: service %2 must be inactive"_xlate << config << service << "/Requirements/InactiveServices" << posix::eom; // record error
+              m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: service %2 must be inactive"_xlate
+                    << config
+                    << service
+                    << "/Requirements/InactiveServices"
+                    << posix::eom; // record error
 
           for(const std::string& provider : clean_explode(getConfigValue(config, "/Requirements/ActiveProviders"), LIST_DELIM))
             if(m_process_map.find(provider) == m_process_map.end()) // provider should be running
-              m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: provider %2 must be active"_xlate << config << provider << "/Requirements/ActiveProviders" << posix::eom; // record error
+              m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: provider %2 must be active"_xlate
+                    << config
+                    << provider
+                    << "/Requirements/ActiveProviders"
+                    << posix::eom; // record error
 
           for(const std::string& provider : clean_explode(getConfigValue(config, "/Requirements/InactiveProviders"), LIST_DELIM))
             if(m_process_map.find(provider) != m_process_map.end()) // provider should NOT be running
-              m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: provider %2 must be inactive"_xlate << config << provider << "/Requirements/InactiveProviders" << posix::eom; // record error
+              m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: provider %2 must be inactive"_xlate
+                    << config
+                    << provider
+                    << "/Requirements/InactiveProviders"
+                    << posix::eom; // record error
 
           if(m_log.empty()) // process requirements are satisified
           {
-            m_waitstart.setServices(services);
-            Object::disconnect(m_waitstart.event_timeout);
-            Object::connect(m_waitstart.event_timeout,
-                            Object::fslot_t<void>([this, &config, &services]()
-                            {
-                              for(const std::string& service : services) // check all services (if any)
-                                if(!service_exists(service)) // ensure service exists
-                                  m_log << "Provider: %1\nField: %3\nError: timed out waiting for service to start\nCause: service %2 does not exist."_xlate << config << service << "/Process/ProvidedServices" << posix::eom; // record error
-                              jobStuck(); // job did not exit in allotted time :(
-                            }));
-
-            milliseconds_t timeout = std::stoi(getConfigValue(config, "/Process/StartTimeout"));
-            if(!timeout) // safeguard from bad config value
-              timeout = seconds(20); // 20 second timeout
-            m_waitstart.setTimeout(timeout);
-
-            m_childproc = new ChildProcess();
-            m_process_map[config].add(posix::getpid(), m_childproc->processId());
-
-            Object::connect(m_childproc->started, Object::fslot_t<void, pid_t>([this](pid_t) { jobDone(); }));
-            for(auto pair : getConfigData(config))
-              m_childproc->setOption(pair.first, pair.second);
-            if(m_childproc->invoke())
+            // std::pair<std::unordered_map<std::string, std::shared_ptr<JobContainer>>::iterator,bool> rval =
+            auto rval = m_process_map.emplace(config, std::make_shared<JobContainer>(config));
+            if(rval.second)
             {
-              //display::providerStatus(config, "starting");
+              std::shared_ptr<JobContainer> job = rval.first->second;
+              Object::connect(job->startSuccess, this, &DirectorCore::processJob);
+              Object::connect(job->stopSuccess , this, &DirectorCore::processJob);
+              job->start(std::stoi(getConfigValue(config, "/Process/StartTimeout")),
+                         services,
+                         getConfigData(config));
             }
           }
         }
@@ -380,7 +378,11 @@ void DirectorCore::processJob(void) noexcept
         {
           for(const std::string& service : services) // check all services (if any)
             if(!service_exists(service)) // ensure service exists
-              m_log << "Provider: %1\nField: %3\nError: not providing service\nCause: service %2 does not exist."_xlate << config << service << "/Process/ProvidedServices" << posix::eom; // record error
+              m_log << "Provider: %1\nField: %3\nError: not providing service\nCause: service %2 does not exist."_xlate
+                    << config
+                    << service
+                    << "/Process/ProvidedServices"
+                    << posix::eom; // record error
 
           if(m_log.empty()) // if service sockets extant (if have services)
             Object::singleShot(this, &DirectorCore::jobDone); // job is done
@@ -391,65 +393,11 @@ void DirectorCore::processJob(void) noexcept
         auto iter = m_process_map.find(config);
         if(iter != m_process_map.end())
         {
-          JobController& job = iter->second;
-          milliseconds_t timeout = std::stoi(getConfigValue(config, "/Exiting/Timeout"));
-          posix::Signal::EId signalid = decode_signal_name(getConfigValue(config, "/Exiting/Signal"));
-          uint32_t exit_type = hash(getConfigValue(config, "/Exiting/ExitWaitType"));
-
-          Object::disconnect(m_waitexit.event_timeout);
-
-          // safeguard from bad config
-          if(exit_type == "HaltService"_hash && // if halting waits for services to disappear AND
-             services.empty()) // no services are provided
-            exit_type = "ProcessTermination"_hash; // switch exit to waiting for the process to stop existing
-
-          switch(exit_type)
-          {
-            case "HaltServices"_hash: // Wait for services to disappear and assume it exits
-            {
-              Object::connect(m_waitexit.event_timeout,
-                              Object::fslot_t<void>([this, &config, &services]()
-                              {
-                                for(const std::string& service : services) // check all services (if any)
-                                  if(!service_exists(service)) // ensure service exists
-                                    m_log << "Provider: %1\nField: %3\nError: timed out waiting for service to end\nCause: service %2 does not exist."_xlate << config << service << "/Process/ProvidedServices" << posix::eom; // record error
-                                jobStuck(); // job did not exit in allotted time :(
-                              }));
-              m_waitexit.setServices(services);
-              if(!timeout) // safeguard from bad config value
-                timeout = seconds(1); // 1 second timeout
-              break;
-            }
-
-            case "AssumeExit"_hash: // just send the signal and assume it exits
-            {
-              timeout = 0; // never timeout
-              Object::singleShot(this, &DirectorCore::jobDone); // assume it exits
-              break;
-            }
-
-            default: // Unexpected value! Default to waiting for process to stop existing
-            case "ProcessTermination"_hash: // wait for the process to stop existing
-            {
-              Object::connect(job.exited, Object::fslot_t<void, posix::error_t    >([this](posix::error_t    ) { jobDone(); })); // job exited properly :)
-              Object::connect(job.killed, Object::fslot_t<void, posix::Signal::EId>([this](posix::Signal::EId) { jobDone(); })); // job killed :/
-              Object::connect(m_waitexit.event_timeout,
-                              Object::fslot_t<void>([this, &config, pid_pairs = job.getPids()]()
-                              {
-                                std::string pidlist;
-                                m_log << "Provider: %1\nField: %3\nError: timed out waiting for provider to exit\nCause: PID(s) %2 exist."_xlate << config << pidlist << "/Process/ProvidedServices" << posix::eom; // record error
-                                jobStuck(); // job did not exit in allotted time :(
-                              }));
-
-              m_waitexit.setPids(job.getPids());
-              if(!timeout) // safeguard from bad config value
-                timeout = seconds(10); // 10 second timeout
-              break;
-            }
-          }
-          if(timeout) // if timeout is set
-            m_waitexit.setTimeout(timeout); // start timer
-          job.sendSignal(signalid); // send job the signal to exit
+          std::shared_ptr<JobContainer> job = iter->second;
+          job->stop(std::stoi(getConfigValue(config, "/Exiting/Timeout")),
+                    services,
+                    decode_signal_name(getConfigValue(config, "/Exiting/Signal")),
+                    getConfigValue(config, "/Exiting/ExitWaitType"));
         }
       }
     }

@@ -22,6 +22,7 @@ QMAKE_CXXFLAGS_RELEASE += -Os
 QMAKE_CXXFLAGS_RELEASE += -fno-asynchronous-unwind-tables
 #QMAKE_CXXFLAGS_RELEASE += -fstack-protector-all
 QMAKE_CXXFLAGS_RELEASE += -fstack-protector-strong
+QMAKE_CXXFLAGS_RELEASE += -fstack-clash-protection
 
 # optimizations
 QMAKE_CXXFLAGS_RELEASE += -fdata-sections
@@ -63,6 +64,7 @@ SOURCES = main.cpp \
     directorconfigclient.cpp \
     configclient.cpp \
     jobcontroller.cpp \
+    jobcontainer.cpp \
     dependencysolver.cpp \
     eventpending.cpp \
     servicecheck.cpp \
@@ -101,6 +103,7 @@ HEADERS += \
     directorconfigclient.h \
     configclient.h \
     jobcontroller.h \
+    jobcontainer.h \
     dependencysolver.h \
     eventpending.h \
     servicecheck.h \

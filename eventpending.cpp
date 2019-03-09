@@ -48,7 +48,7 @@ bool EventPending::setTimeout(milliseconds_t timeout) noexcept
     m_max_timeout_count = 1;
   }
 
-  return m_timer.start(timeout, timeout);
+  return m_timer.start(timeout, true);
 }
 
 // test if they exist or not
@@ -60,7 +60,7 @@ bool ExitPending::activateTrigger(void) noexcept
       if(service_exists(service))
         return false;
   }
-  else if(m_pids.empty())
+  else if(!m_pids.empty())
   {
     struct process_state_t state;
     for(const std::pair<pid_t, pid_t>& pid_pair : m_pids)

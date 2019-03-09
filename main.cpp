@@ -6,6 +6,8 @@
 #include <cxxutils/translate.h>
 #include <specialized/capabilities.h>
 
+#include <specialized/osdetect.h>
+
 // project
 #include "directorcore.h"
 
@@ -21,7 +23,8 @@
 # define DIRECTOR_GROUPNAME     DIRECTOR_USERNAME
 #endif
 
-#if defined(__linux__) && KERNEL_VERSION_CODE >= KERNEL_VERSION(2,1,44)
+#if (defined(__linux__) && KERNEL_VERSION_CODE >= KERNEL_VERSION(2,1,44)) || \
+    (defined(__FreeBSD__) && KERNEL_VERSION_CODE >= KERNEL_VERSION(10,2,0))
 # include <sys/prctl.h>
 #endif
 
@@ -41,7 +44,7 @@ int main(int argc, char *argv[]) noexcept
   posix::atexit(exiting);
   posix::syslog.open(DIRECTOR_APP_NAME, posix::facility::provider);
 
-#if defined(PR_SET_CHILD_SUBREAPER)
+#if defined(PR_SET_CHILD_SUBREAPER) // Linux
   if(::prctl(PR_SET_CHILD_SUBREAPER, 1) != posix::success_response &&
      posix::getpid() != 1)
   {
@@ -51,7 +54,17 @@ int main(int argc, char *argv[]) noexcept
                   << "Director may lose track of processes that fork excessively."_xlate
                   << posix::eom;
   }
-#else
+#elif defined(PROC_REAP_ACQUIRE) // FreeBSD/DragonflyBSD
+  if(::prctl(PROC_REAP_ACQUIRE, 1) != posix::success_response &&
+     posix::getpid() != 1)
+  {
+    posix::syslog << posix::priority::warning
+                  << "%1\n%2"
+                  << "Director was unable to install a child process subreaper and is not process identifier 1."_xlate
+                  << "Director may lose track of processes that fork excessively."_xlate
+                  << posix::eom;
+  }
+#else // Everything else
   if(posix::getpid() != 1)
   {
     posix::syslog << posix::priority::warning
@@ -62,8 +75,8 @@ int main(int argc, char *argv[]) noexcept
   }
 #endif
 
-#if defined(POSIX_DRAFT_1E)
-  if(::prctl(PR_SET_KEEPCAPS, 1) != posix::success_response)
+#if defined(POSIX_DRAFT_1E) // Linux
+  if(::prctl(PR_SET_KEEPCAPS, 1) == posix::error_response)
   {
     posix::syslog << posix::priority::error
                   << "Director must be launched with the ability to manipulate process capabilities"_xlate

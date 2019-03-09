@@ -61,6 +61,4 @@ private:
   std::list<std::string> m_services;
 };
 
-
-
 #endif // EXITPENDING_H

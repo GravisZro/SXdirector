@@ -16,7 +16,7 @@ bool service_exists(const std::string& service)
     !reinitialize_paths())
     return false;
   posix::snprintf(path, sizeof(path), "%s/%s", scfs_path, service.c_str());
-  if(posix::access(path, F_OK) == posix::success_response)
+  if(posix::access(path, posix::file_exists))
     return false;
   return true;
 }

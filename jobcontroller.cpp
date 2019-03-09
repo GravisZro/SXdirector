@@ -14,12 +14,12 @@ void JobController::add(pid_t parent_pid, pid_t child_pid) noexcept
     Object::connect(proc.forked, this, &JobController::add);
 
     Object::connect(proc.exited,
-                    Object::fslot_t<void, pid_t, posix::error_t>([this](pid_t pid, int rval) noexcept
-                      { remove(pid); if(m_procs.empty()) { Object::enqueue(exited, rval); } }));
+                    [this](pid_t pid, int rval) noexcept
+                      { remove(pid); if(m_procs.empty()) { Object::enqueue(exited, rval); } });
 
     Object::connect(proc.killed,
-                    Object::fslot_t<void, pid_t, posix::Signal::EId>([this](pid_t pid, int rval) noexcept
-                      { remove(pid); if(m_procs.empty()) { Object::enqueue(exited, rval); } }));
+                    [this](pid_t pid, int rval) noexcept
+                      { remove(pid); if(m_procs.empty()) { Object::enqueue(exited, rval); } });
   }
 }
 

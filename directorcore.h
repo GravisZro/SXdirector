@@ -5,6 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <map>
+#include <memory>
 
 // PDTK
 #include <object.h>
@@ -12,12 +13,10 @@
 #include <cxxutils/syslogstream.h>
 
 // Director
-#include "jobcontroller.h"
 #include "configclient.h"
-#include "eventpending.h"
 #include "directorconfigclient.h"
 #include "dependencysolver.h"
-
+#include "jobcontainer.h"
 
 class DirectorCore : public Object,
                      public DependencySolver
@@ -54,7 +53,7 @@ private:
 // variables
   std::string m_runlevel;
   std::map<std::string, runlevel_t> m_runlevel_aliases;
-  std::unordered_map<std::string, JobController> m_process_map; // indexed by provider name
+  std::unordered_map<std::string, std::shared_ptr<JobContainer>> m_process_map; // indexed by provider name
 
   std::queue<std::pair<bool, std::string>> m_action_queue; // bool (start/stop) + name
 
@@ -64,9 +63,6 @@ private:
   DirectorConfigClient m_director_config_client;
   uid_t m_euid;
   gid_t m_egid;
-  ExitPending m_waitexit;
-  StartPending m_waitstart;
-  ChildProcess* m_childproc;
   ErrorLogStream m_log;
 };
 
