@@ -48,6 +48,7 @@ SOURCES       = main.cpp \
 		directorcore.cpp \
 		dependencysolver.cpp \
 		eventpending.cpp \
+		jobcontainer.cpp \
 		jobcontroller.cpp \
 		servicecheck.cpp \
 		string_helpers.cpp \

@@ -1,7 +1,7 @@
 #include "jobcontainer.h"
 
-#include <put/cxxutils/translate.h>
-#include <put/cxxutils/hashing.h>
+#include <cxxutils/translate.h>
+#include <cxxutils/hashing.h>
 #include "servicecheck.h"
 
 JobContainer::JobContainer(const std::string& name) noexcept
