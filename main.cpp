@@ -1,12 +1,12 @@
 
-// PDTK
-#include <object.h>
-#include <application.h>
-#include <cxxutils/syslogstream.h>
-#include <cxxutils/translate.h>
-#include <specialized/capabilities.h>
+// PUT
+#include <put/object.h>
+#include <put/application.h>
+#include <put/cxxutils/syslogstream.h>
+#include <put/cxxutils/translate.h>
+#include <put/specialized/capabilities.h>
 
-#include <specialized/osdetect.h>
+#include <put/specialized/osdetect.h>
 
 // project
 #include "directorcore.h"
@@ -108,17 +108,26 @@ int main(int argc, char *argv[]) noexcept
                   << posix::eom;
 #endif
 
-  if((posix::strcmp(posix::getgroupname(egid), DIRECTOR_GROUPNAME) && // if current effective group name is NOT what we want AND
-      !posix::setegid(posix::getgroupid(DIRECTOR_GROUPNAME))) || // unable to change effective group id
-     (posix::strcmp(posix::getusername(euid), DIRECTOR_USERNAME) && // if current effective user name is NOT what we want AND
-      !posix::seteuid(posix::getuserid (DIRECTOR_USERNAME)))) // unable to change effective user id
+  if(posix::strcmp(posix::getgroupname(egid), DIRECTOR_GROUPNAME) && // if current effective group name is NOT what we want AND
+     !posix::setegid(posix::getgroupid(DIRECTOR_GROUPNAME))) // unable to change effective group id
   {
     posix::syslog << posix::priority::error
-                  << "Director must be launched as user/group \"%1\" or have permissions to seteuid/setegid"_xlate
+                  << "Director must be launched as group name \"%1\" or have permissions to setegid"_xlate
+                  << DIRECTOR_GROUPNAME
+                  << posix::eom;
+//    posix::exit(posix::error_t(posix::errc::permission_denied));
+  }
+
+  if(posix::strcmp(posix::getusername(euid), DIRECTOR_USERNAME) && // if current effective user name is NOT what we want AND
+     !posix::seteuid(posix::getuserid (DIRECTOR_USERNAME))) // unable to change effective user id
+  {
+    posix::syslog << posix::priority::error
+                  << "Director must be launched as user name \"%1\" or have permissions to seteuid"_xlate
                   << DIRECTOR_USERNAME
                   << posix::eom;
 //    posix::exit(posix::error_t(posix::errc::permission_denied));
   }
+
   Application app;
   posix::signal(SIGPIPE, SIG_IGN);
 

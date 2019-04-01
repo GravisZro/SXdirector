@@ -3,10 +3,10 @@
 // POSIX++
 #include <climits>
 
-// PDTK
-#include <object.h>
-#include <cxxutils/hashing.h>
-#include <cxxutils/syslogstream.h>
+// PUT
+#include <put/object.h>
+#include <put/cxxutils/hashing.h>
+#include <put/cxxutils/syslogstream.h>
 
 #ifndef SCFS_PATH
 #define SCFS_PATH               "/svc"
@@ -26,7 +26,7 @@
 #define UNABLE_TO_PARSE_CONFIGURATION           0x12
 
 #ifndef NO_CONFIG_FALLBACK
-#include <cxxutils/configmanip.h>
+#include <put/cxxutils/configmanip.h>
 
 static bool readconfig(const char* name, std::string& buffer) noexcept
 {

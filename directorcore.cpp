@@ -5,14 +5,15 @@
 
 // STL
 #include <string>
+#include <cassert>
 
-// PDTK
-#include <cxxutils/syslogstream.h>
-#include <cxxutils/vterm.h>
-#include <cxxutils/hashing.h>
-#include <cxxutils/translate.h>
-#include <specialized/procstat.h>
-#include <specialized/proclist.h>
+// PUT
+#include <put/cxxutils/syslogstream.h>
+#include <put/cxxutils/vterm.h>
+#include <put/cxxutils/hashing.h>
+#include <put/cxxutils/translate.h>
+#include <put/specialized/procstat.h>
+#include <put/specialized/proclist.h>
 
 // Director
 #include "string_helpers.h"
@@ -194,17 +195,6 @@ void DirectorCore::reloadBinary(void) noexcept
 inline bool starts_with(const std::string& str, const char* seek)
   { return posix::memcmp(str.data(), seek, strlen(seek)) == 0; }
 
-inline DependencySolver::runlevel_t convert_to_runlevel(const std::string& str)
-{
-  bool numeric = true; // for keeping track if every character is a digit
-  int rl = 0;
-  for(char c : str) // test each character to ensure this is a positive integer
-    if(numeric &= posix::isdigit(c))
-      rl = (rl * 10) + (c - '0');
-
-  return (!numeric || rl < 0 || rl > INT16_MAX) ? DependencySolver::invalid_runlevel : rl;
-}
-
 void DirectorCore::reloadSettings(void) noexcept
 {
   if(m_config_client.isSynchronized() && // ensure fully synchronized to avoid multiple reloads
@@ -225,7 +215,7 @@ void DirectorCore::reloadSettings(void) noexcept
         // std::map<std::string, runlevel_t>::const_iterator iter =
         auto iter = m_runlevel_aliases.find(pair.second);
         if(iter == m_runlevel_aliases.end()) // if runlevel value doesn't exist
-          rl = convert_to_runlevel(pair.second); // convert string value to runlevel value (if possible)
+          rl = convert_to_runlevel(pair.second, invalid_runlevel); // convert string value to runlevel value (if possible)
         else // if runlevel value already exists
           rl = iter->second; // copy value
 
@@ -251,7 +241,7 @@ void DirectorCore::reloadSettings(void) noexcept
     {
       Object::connect(runlevel_changed,
                       [this](const std::string&) noexcept { reloadBinary(); });
-      setRunlevel("bootstrap"); // switch to the system init runlevel
+      assert(setRunlevel("bootstrap")); // switch to the system init runlevel
     }
     else if(m_runlevel == "bootstrap")
       setRunlevel(m_config_client.get("/Settings/InitialRunlevel")); // switch to the initial runlevel
@@ -264,6 +254,11 @@ inline const std::string& DirectorCore::getConfigValue(const std::string& config
   return m_director_config_client.get(config, key);
 }
 
+inline std::list<std::string> DirectorCore::getConfigValues(const std::string& config, const std::string& key) const noexcept
+{
+  return clean_explode(m_director_config_client.get(config, key), LIST_DELIM);
+}
+
 inline std::list<std::string> DirectorCore::getConfigList(void) const noexcept
 {
   return m_director_config_client.listConfigs();
@@ -274,7 +269,7 @@ inline DependencySolver::runlevel_t DirectorCore::getRunlevelNumber(const std::s
   // std::map<std::string, runlevel_t>::const_iterator iter =
   auto iter = m_runlevel_aliases.find(rlname);
   if(iter == m_runlevel_aliases.end())
-    return invalid_runlevel;
+    return convert_to_runlevel(rlname, invalid_runlevel); // last ditch effort to convert directly to a numeric value
   return iter->second;
 }
 
@@ -319,7 +314,7 @@ void DirectorCore::processJob(void) noexcept
     }
     else // if the config file exists
     {
-      std::list<std::string> services = clean_explode(getConfigValue(config, "/Process/ProvidedServices"), LIST_DELIM);
+      std::list<std::string> services = getConfigValues(config, "/Process/ProvidedServices");
 
       if(start) // if starting provider
       {
@@ -327,7 +322,7 @@ void DirectorCore::processJob(void) noexcept
         auto iter = m_process_map.find(config); // look to see if already started
         if(iter == m_process_map.end()) // if not already started
         {
-          for(const std::string& service : clean_explode(getConfigValue(config, "/Requirements/ActiveServices"), LIST_DELIM))
+          for(const std::string& service : getConfigValues(config, "/Requirements/ActiveServices"))
             if(!service_exists(service)) // service should exists
               m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: service %2 must be active"_xlate
                     << config
@@ -335,7 +330,7 @@ void DirectorCore::processJob(void) noexcept
                     << "/Requirements/ActiveServices"
                     << posix::eom; // record error
 
-          for(const std::string& service : clean_explode(getConfigValue(config, "/Requirements/InactiveServices"), LIST_DELIM))
+          for(const std::string& service : getConfigValues(config, "/Requirements/InactiveServices"))
             if(service_exists(service)) // service should NOT exist
               m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: service %2 must be inactive"_xlate
                     << config
@@ -343,7 +338,7 @@ void DirectorCore::processJob(void) noexcept
                     << "/Requirements/InactiveServices"
                     << posix::eom; // record error
 
-          for(const std::string& provider : clean_explode(getConfigValue(config, "/Requirements/ActiveProviders"), LIST_DELIM))
+          for(const std::string& provider : getConfigValues(config, "/Requirements/ActiveProviders"))
             if(m_process_map.find(provider) == m_process_map.end()) // provider should be running
               m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: provider %2 must be active"_xlate
                     << config
@@ -351,7 +346,7 @@ void DirectorCore::processJob(void) noexcept
                     << "/Requirements/ActiveProviders"
                     << posix::eom; // record error
 
-          for(const std::string& provider : clean_explode(getConfigValue(config, "/Requirements/InactiveProviders"), LIST_DELIM))
+          for(const std::string& provider : getConfigValues(config, "/Requirements/InactiveProviders"))
             if(m_process_map.find(provider) != m_process_map.end()) // provider should NOT be running
               m_log << "Provider: %1\nField: %3\nError: failed to start\nCause: provider %2 must be inactive"_xlate
                     << config

@@ -1,6 +1,6 @@
 #include "jobcontroller.h"
 
-#include <specialized/procstat.h>
+#include <put/specialized/procstat.h>
 
 void JobController::add(pid_t parent_pid, pid_t child_pid) noexcept
 {

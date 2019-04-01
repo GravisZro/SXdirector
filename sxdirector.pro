@@ -86,7 +86,9 @@ SOURCES = main.cpp \
     $$PUT/specialized/fileevent.cpp \
     $$PUT/specialized/pollevent.cpp \
     $$PUT/specialized/processevent.cpp \
-    $$PUT/specialized/timerevent.cpp
+    $$PUT/specialized/timerevent.cpp \
+    units/jobcontainer_unit.cpp \
+    units/process_control_tester.cpp
 
 tui:SOURCES += \
     $$PUT/tui/widget.cpp \

@@ -35,11 +35,12 @@ ifneq ($(shell getconf _XOPEN_VERSION 1>/dev/null 2>&1; echo $$?),0)
   $(shell for funcname in $(TESTLIST); do echo $(TESTFILE) | sed -e "s/\\\\n/\\n/g" > $(TESTFILEPATH) && ${CXX} ${CXXSTANDARD} ${TESTFILEPATH} 1>/dev/null 2>&1 && echo "#HAVE_$${funcname}" | tr '[:lower:]' '[:upper:]' | sed -e "s/HAVE/define HAVE/" >> $(OUTPUTFILE) ; done)
 endif
 
-PUT           = ./put
-INCPATH       = -I$(PUT)
-CFLAGS        = -pipe -g -Os -Wall -W -fPIC $(DEFINES) $(INCPATH)
+PUT           = put
+STATICLIB     = $(BUILD_PATH)/libput.a
+INCLUDE_PATH  = -I$(SOURCE_PATH)
+CFLAGS        = -pipe -g -Os -Wall -W -fPIC -flto $(DEFINES) $(INCLUDE_PATH)
 CXXFLAGS      = $(CFLAGS) -fno-exceptions -fno-rtti
-LDFLAGS       = 
+LDFLAGS       = $(STATICLIB)
 
 TARGET        = sxdirector
 SOURCES       = main.cpp \
@@ -52,30 +53,16 @@ SOURCES       = main.cpp \
 		jobcontroller.cpp \
 		servicecheck.cpp \
 		string_helpers.cpp \
-		$(PUT)/application.cpp \
-		$(PUT)/childprocess.cpp \
-		$(PUT)/socket.cpp \
-		$(PUT)/cxxutils/vfifo.cpp \
-		$(PUT)/cxxutils/configmanip.cpp \
-		$(PUT)/cxxutils/syslogstream.cpp \
-		$(PUT)/cxxutils/translate.cpp \
-		$(PUT)/specialized/eventbackend.cpp \
-		$(PUT)/specialized/mutex.cpp \
-		$(PUT)/specialized/peercred.cpp \
-		$(PUT)/specialized/procstat.cpp \
-		$(PUT)/specialized/proclist.cpp \
-		$(PUT)/specialized/fstable.cpp \
-		$(PUT)/specialized/mountpoints.cpp \
-		$(PUT)/specialized/fileevent.cpp \
-		$(PUT)/specialized/pollevent.cpp \
-		$(PUT)/specialized/processevent.cpp \
-		$(PUT)/specialized/timerevent.cpp
+
+UNITSOURCES   = units/process_control_tester.cpp \
+		units/jobcontainer_unit.cpp
 
 OBJS := $(SOURCES:.s=.o)
 OBJS := $(OBJS:.c=.o)
 OBJS := $(OBJS:.cpp=.o)
 OBJS := $(foreach f,$(OBJS),$(BUILD_PATH)/$(f))
 SOURCES := $(foreach f,$(SOURCES),$(SOURCE_PATH)/$(f))
+UNITS := $(foreach f,$(UNITSOURCES:.cpp=),$(BUILD_PATH)/$(f))
 
 $(BUILD_PATH)/%.o: $(SOURCE_PATH)/%.cpp
 	@echo [Compiling]: $<
@@ -85,14 +72,27 @@ $(BUILD_PATH)/%.o: $(SOURCE_PATH)/%.c
 	@echo [Compiling]: $<
 	$(QUIET) $(CC) -c -o $@ $< $(CSTANDARD) $(CFLAGS)
 
-$(TARGET): OUTPUT_DIR $(OBJS)
+$(TARGET): OUTPUT_DIR $(OBJS) $(STATICLIB)
 	@echo [ Linking ]: $@
 	$(QUIET) $(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
-OUTPUT_DIR:
-	$(QUIET) mkdir -p $(BUILD_PATH)/$(PUT)/cxxutils
-	$(QUIET) mkdir -p $(BUILD_PATH)/$(PUT)/specialized
+$(BUILD_PATH)/units/%: OUTPUT_DIR $(OBJS)
+	@echo [ Linking ]: $@
+	$(QUIET) $(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
+$(TARGET): OUTPUT_DIR $(OBJS) $(STATICLIB)
+	@echo [ Linking ]: $@
+	$(QUIET) $(CXX) -o $@ $(OBJS) $(LDFLAGS)
+
+$(STATICLIB): $(PUT)
+	@echo [Compiling]: $@
+	$(QUIET) make -f $(PUT)/Makefile.travis $(STATICLIB) -e \
+		SOURCE_PATH=$(PUT) BUILD_PATH=$(BUILD_PATH) \
+		VERBOSE=$(VERBOSE) CC=$(CC) CXX=$(CXX) \
+		CSTANDARD=$(CSTANDARD) CXXSTANDARD=$(CXXSTANDARD)
+
+OUTPUT_DIR:
+	$(QUIET) mkdir -p $(BUILD_PATH)
 clean:
 	$(QUIET) rm -f $(TARGET)
 	$(QUIET) rm -rf $(BUILD_PATH)

@@ -4,8 +4,8 @@
 #include <cstring>
 #include <climits>
 
-// PDTK
-#include <cxxutils/hashing.h>
+// PUT
+#include <put/cxxutils/hashing.h>
 
 
 std::list<std::string> clean_explode(const std::string& str, char delim) noexcept
@@ -32,6 +32,18 @@ std::list<std::string> clean_explode(const std::string& str, char delim) noexcep
     strs.emplace_back(newstr);
 
   return strs;
+}
+
+
+int16_t convert_to_runlevel(const std::string& str, int16_t invalid_value)
+{
+  bool numeric = true; // for keeping track if every character is a digit
+  int rl = 0;
+  for(char c : str) // test each character to ensure this is a positive integer
+    if(numeric &= posix::isdigit(c))
+      rl = (rl * 10) + (c - '0');
+
+  return (!numeric || rl < 0 || rl > INT16_MAX) ? invalid_value : rl;
 }
 
 

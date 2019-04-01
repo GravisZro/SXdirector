@@ -3,9 +3,9 @@
 // POSIX++
 #include <climits>
 
-// PDTK
+// PUT
 #include "servicecheck.h"
-#include <specialized/procstat.h>
+#include <put/specialized/procstat.h>
 
 EventPending::EventPending(void) noexcept
   : m_timeout_count(0), m_max_timeout_count(0)

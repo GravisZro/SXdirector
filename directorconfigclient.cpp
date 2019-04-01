@@ -4,10 +4,10 @@
 #include <climits>
 #include <cstdio>
 
-// PDTK
-#include <object.h>
-#include <cxxutils/hashing.h>
-#include <cxxutils/syslogstream.h>
+// PUT
+#include <put/object.h>
+#include <put/cxxutils/hashing.h>
+#include <put/cxxutils/syslogstream.h>
 
 #ifndef SCFS_PATH
 #define SCFS_PATH               "/svc"
@@ -25,7 +25,7 @@
 
 #ifndef NO_CONFIG_FALLBACK
 #include <dirent.h>
-#include <cxxutils/configmanip.h>
+#include <put/cxxutils/configmanip.h>
 
 
 static const char* extract_provider_name(const char* filename)

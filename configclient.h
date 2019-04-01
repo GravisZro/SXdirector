@@ -6,10 +6,10 @@
 #include <vector>
 #include <string>
 
-// PDTK
-#include <socket.h>
-#include <cxxutils/vfifo.h>
-#include <cxxutils/posix_helpers.h>
+// PUT
+#include <put/socket.h>
+#include <put/cxxutils/vfifo.h>
+#include <put/cxxutils/posix_helpers.h>
 
 #ifndef CONFIG_USERNAME
 #define CONFIG_USERNAME         "config"

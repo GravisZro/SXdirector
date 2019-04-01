@@ -7,10 +7,10 @@
 #include <map>
 #include <memory>
 
-// PDTK
-#include <object.h>
-#include <childprocess.h>
-#include <cxxutils/syslogstream.h>
+// PUT
+#include <put/object.h>
+#include <put/childprocess.h>
+#include <put/cxxutils/syslogstream.h>
 
 // Director
 #include "configclient.h"
@@ -37,6 +37,7 @@ private:
   virtual std::list<std::string> getConfigList(void) const noexcept;
   virtual runlevel_t getRunlevelNumber(const std::string& rlname) const noexcept;
 // privately used stortcuts
+  std::list<std::string> getConfigValues(const std::string& config, const std::string& key) const noexcept;
   const std::unordered_map<std::string, std::string>& getConfigData(const std::string& config) const noexcept;
 
 // signals

@@ -6,9 +6,9 @@
 #include <list>
 #include <string>
 
-// PDTK
-#include <object.h>
-#include <specialized/timerevent.h>
+// PUT
+#include <put/object.h>
+#include <put/specialized/timerevent.h>
 
 class EventPending : public Object
 {

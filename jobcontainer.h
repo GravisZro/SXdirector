@@ -3,8 +3,8 @@
 
 #include <memory>
 
-#include <childprocess.h>
-#include <cxxutils/syslogstream.h>
+#include <put/childprocess.h>
+#include <put/cxxutils/syslogstream.h>
 
 #include "jobcontroller.h"
 #include "eventpending.h"
