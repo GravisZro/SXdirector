@@ -93,13 +93,13 @@ $(BUILD_PATH)/%.elf: OUTPUT_DIR $(UNITOBJS) $(OBJS) $(STATICLIB)
 $(STATICLIB): $(PUT)
 	@echo [Compiling]: $@
 	$(QUIET) make -f $(PUT)/Makefile.travis $(STATICLIB) \
-		-e SOURCE_PATH=$(PUT) \
-		-e BUILD_PATH=$(BUILD_PATH) \
-		-e VERBOSE=$(VERBOSE) \
-		-e CC=$(CC) \
-		-e CXX=$(CXX) \
-		-e CSTANDARD=$(CSTANDARD) \
-		-e CXXSTANDARD=$(CXXSTANDARD)
+		SOURCE_PATH=$(PUT) \
+		BUILD_PATH=$(BUILD_PATH) \
+		VERBOSE=$(VERBOSE) \
+		CC=$(CC) \
+		CXX=$(CXX) \
+		CSTANDARD=$(CSTANDARD) \
+		CXXSTANDARD=$(CXXSTANDARD)
 
 OUTPUT_DIR:
 	$(QUIET) mkdir -p $(BUILD_PATH)
