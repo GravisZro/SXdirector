@@ -61,7 +61,7 @@ SOURCES       = configclient.cpp \
 UNITSOURCES   = units/process_control_unit.cpp \
 		units/jobcontainer_unit.cpp
 
-MAINOBJ := $(MAINSOURCE:.cpp=.o)
+MAINOBJ := $(BUILD_PATH)/$(MAINSOURCE:.cpp=.o)
 OBJS := $(SOURCES:.s=.o)
 OBJS := $(OBJS:.c=.o)
 OBJS := $(OBJS:.cpp=.o)
