@@ -44,11 +44,11 @@ STATICLIB     = $(BUILD_PATH)/libput.a
 INCLUDE_PATH  = -I$(SOURCE_PATH)
 CFLAGS        = -pipe -g -Os -Wall -W -fPIC $(LTO_FLAG) $(DEFINES) $(INCLUDE_PATH)
 CXXFLAGS      = $(CFLAGS) -fno-exceptions -fno-rtti
-LDFLAGS       = $(STATICLIB) $(LTO_FLAG) 
+LDFLAGS       = $(STATICLIB) $(LTO_FLAG)
 
 TARGET        = sxdirector
-SOURCES       = main.cpp \
-		configclient.cpp \
+MAINSOURCE    = main.cpp
+SOURCES       = configclient.cpp \
 		directorconfigclient.cpp \
 		directorcore.cpp \
 		dependencysolver.cpp \
@@ -58,15 +58,18 @@ SOURCES       = main.cpp \
 		servicecheck.cpp \
 		string_helpers.cpp \
 
-UNITSOURCES   = units/process_control_tester.cpp \
+UNITSOURCES   = units/process_control_unit.cpp \
 		units/jobcontainer_unit.cpp
 
+MAINOBJ := $(MAINSOURCE:.cpp=.o)
 OBJS := $(SOURCES:.s=.o)
 OBJS := $(OBJS:.c=.o)
 OBJS := $(OBJS:.cpp=.o)
 OBJS := $(foreach f,$(OBJS),$(BUILD_PATH)/$(f))
 SOURCES := $(foreach f,$(SOURCES),$(SOURCE_PATH)/$(f))
-UNITS := $(foreach f,$(UNITSOURCES:.cpp=),$(BUILD_PATH)/$(f))
+UNITOBJS := $(foreach f,$(UNITSOURCES:.cpp=.o),$(BUILD_PATH)/$(f))
+UNITS := $(foreach f,$(UNITSOURCES:.cpp=.elf),$(BUILD_PATH)/$(f))
+
 
 $(BUILD_PATH)/%.o: $(SOURCE_PATH)/%.cpp
 	@echo [Compiling]: $<
@@ -76,17 +79,16 @@ $(BUILD_PATH)/%.o: $(SOURCE_PATH)/%.c
 	@echo [Compiling]: $<
 	$(QUIET) $(CC) -c -o $@ $< $(CSTANDARD) $(CFLAGS)
 
-$(TARGET): OUTPUT_DIR $(OBJS) $(STATICLIB)
-	@echo [ Linking ]: $@
-	$(QUIET) $(CXX) -o $@ $(OBJS) $(LDFLAGS)
+all: $(TARGET) $(UNITS)
+	@echo [ Completed ]: $@
 
-$(BUILD_PATH)/units/%: OUTPUT_DIR $(OBJS)
+$(TARGET): OUTPUT_DIR $(MAINOBJ) $(OBJS) $(STATICLIB)
 	@echo [ Linking ]: $@
-	$(QUIET) $(CXX) -o $@ $(OBJS) $(LDFLAGS)
+	$(QUIET) $(CXX) -o $@ $(MAINOBJ) $(OBJS) $(LDFLAGS)
 
-$(TARGET): OUTPUT_DIR $(OBJS) $(STATICLIB)
+$(BUILD_PATH)/%.elf: OUTPUT_DIR $(UNITOBJS) $(OBJS) $(STATICLIB)
 	@echo [ Linking ]: $@
-	$(QUIET) $(CXX) -o $@ $(OBJS) $(LDFLAGS)
+	$(QUIET) $(CXX) -o $@ $(BUILD_PATH)/$*.o $(OBJS) $(LDFLAGS)
 
 $(STATICLIB): $(PUT)
 	@echo [Compiling]: $@
@@ -97,6 +99,7 @@ $(STATICLIB): $(PUT)
 
 OUTPUT_DIR:
 	$(QUIET) mkdir -p $(BUILD_PATH)
+	$(QUIET) mkdir -p $(BUILD_PATH)/units
 clean:
 	$(QUIET) rm -f $(TARGET)
 	$(QUIET) rm -rf $(BUILD_PATH)
