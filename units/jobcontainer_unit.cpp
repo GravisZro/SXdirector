@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) noexcept
   std::string arguments;
 
   Application app;
-  JobContainer job(demo);
+  JobContainer job("demo");
 
 
   arguments.append("-s unittest/demo");
