@@ -71,24 +71,24 @@ UNITOBJS := $(foreach f,$(UNITSOURCES:.cpp=.o),$(BUILD_PATH)/$(f))
 UNITS := $(foreach f,$(UNITSOURCES:.cpp=.elf),$(BUILD_PATH)/$(f))
 
 
-$(BUILD_PATH)/%.o: $(SOURCE_PATH)/%.cpp
+$(BUILD_PATH)/%.o: $(SOURCE_PATH)/%.cpp OUTPUT_DIR
 	@echo [Compiling]: $<
 	$(QUIET) $(CXX) -c -o $@ $< $(CXXSTANDARD) $(CXXFLAGS)
 
-$(BUILD_PATH)/%.o: $(SOURCE_PATH)/%.c
+$(BUILD_PATH)/%.o: $(SOURCE_PATH)/%.c OUTPUT_DIR
 	@echo [Compiling]: $<
 	$(QUIET) $(CC) -c -o $@ $< $(CSTANDARD) $(CFLAGS)
 
 all: $(TARGET) $(UNITS)
 	@echo [ Completed ]: $@
 
-$(TARGET): OUTPUT_DIR $(MAINOBJ) $(OBJS) $(STATICLIB)
+$(TARGET): $(MAINOBJ) $(OBJS) $(STATICLIB)
 	@echo [ Linking ]: $@
 	$(QUIET) $(CXX) -o $@ $(MAINOBJ) $(OBJS) $(LDFLAGS)
 
-$(BUILD_PATH)/%.elf: OUTPUT_DIR $(UNITOBJS) $(OBJS) $(STATICLIB)
+$(BUILD_PATH)/%.elf: $(BUILD_PATH)/%.o $(OBJS) $(STATICLIB)
 	@echo [ Linking ]: $@
-	$(QUIET) $(CXX) -o $@ $(BUILD_PATH)/$*.o $(OBJS) $(LDFLAGS)
+	$(QUIET) $(CXX) -o $@ $< $(OBJS) $(LDFLAGS)
 
 $(STATICLIB): $(PUT)
 	@echo [Compiling]: $@
@@ -107,3 +107,7 @@ OUTPUT_DIR:
 clean:
 	$(QUIET) rm -f $(TARGET)
 	$(QUIET) rm -rf $(BUILD_PATH)
+
+%:
+	@echo bad target: $@
+	$(QUIET) exit
