@@ -38,7 +38,7 @@ void exiting(void) noexcept
 //#include "demo.h"
 int main(int argc, char *argv[]) noexcept
 {
-
+  catalog::open("director.cat");
   uid_t euid = posix::geteuid();
   gid_t egid = posix::getegid();
   posix::atexit(exiting);
