@@ -36,8 +36,8 @@ LIBS += -lrt
 QMAKE_CXXFLAGS_DEBUG += -DDEBUG
 QMAKE_CXXFLAGS_RELEASE += -DRELEASE
 #DEFINES += __CONTINUOUS_INTEGRATION__
+
 #DEFINES += DISABLE_INTERRUPTED_WRAPPER
-DEFINES += CATALOG_NAME=director
 #DEFINES += SINGLE_THREADED_APPLICATION
 #DEFINES += FORCE_POSIX_TIMERS
 #DEFINES += FORCE_POSIX_POLL
@@ -56,10 +56,7 @@ QMAKE_LFLAGS += -L/usr/lib/x86_64-linux-musl -dynamic-linker /lib/ld-musl-x86_64
 LIBS += -lc++
 }
 
-PUT = ../put
-INCLUDEPATH += $$PUT
-
-SOURCES = main.cpp \
+SOURCES += main.cpp \
     directorcore.cpp \
     directorconfigclient.cpp \
     configclient.cpp \
@@ -68,37 +65,11 @@ SOURCES = main.cpp \
     dependencysolver.cpp \
     eventpending.cpp \
     servicecheck.cpp \
-    string_helpers.cpp \
-    $$PUT/application.cpp \
-    $$PUT/socket.cpp \
-    $$PUT/childprocess.cpp \
-    $$PUT/cxxutils/vfifo.cpp \
-    $$PUT/cxxutils/configmanip.cpp \
-    $$PUT/cxxutils/syslogstream.cpp \
-    $$PUT/cxxutils/translate.cpp \
-    $$PUT/specialized/eventbackend.cpp \
-    $$PUT/specialized/mutex.cpp \
-    $$PUT/specialized/peercred.cpp \
-    $$PUT/specialized/procstat.cpp \
-    $$PUT/specialized/proclist.cpp \
-    $$PUT/specialized/fstable.cpp \
-    $$PUT/specialized/mountpoints.cpp \
-    $$PUT/specialized/fileevent.cpp \
-    $$PUT/specialized/pollevent.cpp \
-    $$PUT/specialized/processevent.cpp \
-    $$PUT/specialized/timerevent.cpp \
-    units/jobcontainer_unit.cpp \
-    units/process_control_tester.cpp
+    string_helpers.cpp
 
-tui:SOURCES += \
-    $$PUT/tui/widget.cpp \
-    $$PUT/tui/window.cpp \
-    $$PUT/tui/screen.cpp \
-    $$PUT/tui/tuiutils.cpp \
-    $$PUT/tui/layout.cpp \
-    $$PUT/tui/layoutitem.cpp \
-    $$PUT/tui/event.cpp \
-    $$PUT/tui/keyboard.cpp
+units:SOURCES += \
+    units/jobcontainer_unit.cpp \
+    units/process_control_unit.cpp
 
 HEADERS += \
     directorcore.h \
@@ -109,45 +80,6 @@ HEADERS += \
     dependencysolver.h \
     eventpending.h \
     servicecheck.h \
-    string_helpers.h \
-    $$PUT/object.h \
-    $$PUT/application.h \
-    $$PUT/socket.h \
-    $$PUT/childprocess.h \
-    $$PUT/cxxutils/vfifo.h \
-    $$PUT/cxxutils/configmanip.h \
-    $$PUT/cxxutils/syslogstream.h \
-    $$PUT/cxxutils/translate.h \
-    $$PUT/cxxutils/posix_helpers.h \
-    $$PUT/cxxutils/socket_helpers.h \
-    $$PUT/cxxutils/error_helpers.h \
-    $$PUT/cxxutils/hashing.h \
-    $$PUT/cxxutils/colors.h \
-    $$PUT/cxxutils/misc_helpers.h \
-    $$PUT/cxxutils/pipedspawn.h \
-    $$PUT/cxxutils/signal_helpers.h \
-    $$PUT/specialized/osdetect.h \
-    $$PUT/specialized/eventbackend.h \
-    $$PUT/specialized/mutex.h \
-    $$PUT/specialized/peercred.h \
-    $$PUT/specialized/procstat.h \
-    $$PUT/specialized/proclist.h \
-    $$PUT/specialized/fstable.h \
-    $$PUT/specialized/mountpoints.h \
-    $$PUT/specialized/capabilities.h \
-    $$PUT/specialized/fileevent.h \
-    $$PUT/specialized/pollevent.h \
-    $$PUT/specialized/processevent.h \
-    $$PUT/specialized/timerevent.h
+    string_helpers.h
 
-tui:HEADERS += \
-    $$PUT/tui/widget.h \
-    $$PUT/tui/window.h \
-    $$PUT/tui/screen.h \
-    $$PUT/tui/tuiutils.h \
-    $$PUT/tui/layout.h \
-    $$PUT/tui/layoutitem.h \
-    $$PUT/tui/tuitypes.h \
-    $$PUT/tui/sizepolicy.h \
-    $$PUT/tui/event.h \
-    $$PUT/tui/keyboard.h
+include(put/put.pri)
