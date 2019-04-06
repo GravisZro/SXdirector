@@ -26,10 +26,6 @@ ifndef BUILD_PATH
   BUILD_PATH=$(SOURCE_PATH)/bin
 endif
 
-ifndef LTO_FLAG
-  LTO_FLAG=-flto
-endif
-
 ifneq ($(shell getconf _XOPEN_VERSION 1>/dev/null 2>&1; echo $$?),0)
   OUTPUTFILE:=posix_features.h
   TESTLIST:=atexit memmove strerror strnlen atoll strtof strtold strtoll strtoul strtoull snprintf faccessat fexecve fchdir seteuid setegid sigqueue killpg
@@ -42,9 +38,10 @@ endif
 PUT           = put
 STATICLIB     = $(BUILD_PATH)/libput.a
 INCLUDE_PATH  = -I$(SOURCE_PATH)
-CFLAGS        = -pipe -g -Os -Wall -W -fPIC $(LTO_FLAG) $(DEFINES) $(INCLUDE_PATH)
-CXXFLAGS      = $(CFLAGS) -fno-exceptions -fno-rtti
-LDFLAGS       = $(STATICLIB) $(LTO_FLAG)
+INT_DEFINES   = $(DEFINES)
+INT_CFLAGS    = $(CFLAGS) $(INT_DEFINES) -pipe -g -Os -Wall -W -fPIC $(INCLUDE_PATH)
+INT_CXXFLAGS  = $(INT_CFLAGS) -fno-exceptions -fno-rtti
+INT_LDFLAGS   = $(LDFLAGS) $(STATICLIB)
 
 TARGET        = sxdirector
 MAINSOURCE    = main.cpp
@@ -73,27 +70,27 @@ UNITS := $(foreach f,$(UNITSOURCES:.cpp=.elf),$(BUILD_PATH)/$(f))
 
 $(BUILD_PATH)/%.o: $(SOURCE_PATH)/%.cpp OUTPUT_DIR
 	@echo [Compiling]: $<
-	$(QUIET) $(CXX) -c -o $@ $< $(CXXSTANDARD) $(CXXFLAGS)
+	$(QUIET) $(CXX) -c -o $@ $< $(CXXSTANDARD) $(INT_CXXFLAGS)
 
 $(BUILD_PATH)/%.o: $(SOURCE_PATH)/%.c OUTPUT_DIR
 	@echo [Compiling]: $<
-	$(QUIET) $(CC) -c -o $@ $< $(CSTANDARD) $(CFLAGS)
+	$(QUIET) $(CC) -c -o $@ $< $(CSTANDARD) $(INT_CFLAGS)
 
 all: $(TARGET) $(UNITS)
 	@echo [ Completed ]: $@
 
 $(TARGET): $(MAINOBJ) $(OBJS) $(STATICLIB)
 	@echo [ Linking ]: $@
-	$(QUIET) $(CXX) -o $@ $(MAINOBJ) $(OBJS) $(LDFLAGS)
+	$(QUIET) $(CXX) -o $@ $(MAINOBJ) $(OBJS) $(INT_LDFLAGS)
 
 $(BUILD_PATH)/%.elf: $(BUILD_PATH)/%.o $(OBJS) $(STATICLIB)
 	@echo [ Linking ]: $@
-	$(QUIET) $(CXX) -o $@ $< $(OBJS) $(LDFLAGS)
+	$(QUIET) $(CXX) -o $@ $< $(OBJS) $(INT_LDFLAGS)
 
 $(STATICLIB): $(PUT)
 	@echo [Compiling]: $@
 	$(QUIET) make -f $(PUT)/Makefile.travis $(STATICLIB) \
-		SOURCE_PATH=$(PUT) \
+		SOURCE_PATH=$< \
 		BUILD_PATH=$(BUILD_PATH) \
 		VERBOSE=$(VERBOSE) \
 		CC=$(CC) \
