@@ -27,10 +27,13 @@ QMAKE_CXXFLAGS_RELEASE += -fstack-clash-protection
 # optimizations
 QMAKE_CXXFLAGS_RELEASE += -fdata-sections
 QMAKE_CXXFLAGS_RELEASE += -ffunction-sections
+QMAKE_CXXFLAGS_RELEASE += -flto
 QMAKE_LFLAGS_RELEASE += -Wl,--gc-sections
+QMAKE_LFLAGS_RELEASE += -flto
 
 # libraries
 LIBS += -lrt
+LIBS += -lpthread
 
 # defines
 QMAKE_CXXFLAGS_DEBUG += -DDEBUG
@@ -43,18 +46,6 @@ QMAKE_CXXFLAGS_RELEASE += -DRELEASE
 #DEFINES += FORCE_POSIX_POLL
 #DEFINES += FORCE_POSIX_MUTEXES
 #DEFINES += FORCE_PROCESS_POLLING
-
-#LIBS += -lpthread
-experimental {
-#QMAKE_CXXFLAGS += -stdlib=libc++
-QMAKE_CXXFLAGS += -nostdinc
-INCLUDEPATH += /usr/include/x86_64-linux-musl
-INCLUDEPATH += /usr/include/c++/v1
-INCLUDEPATH += /usr/include
-INCLUDEPATH += /usr/include/x86_64-linux-gnu
-QMAKE_LFLAGS += -L/usr/lib/x86_64-linux-musl -dynamic-linker /lib/ld-musl-x86_64.so.1
-LIBS += -lc++
-}
 
 SOURCES += main.cpp \
     directorcore.cpp \
