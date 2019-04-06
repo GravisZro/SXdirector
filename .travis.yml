@@ -11,8 +11,8 @@ matrix:
           packages: ['g++-4.9', 'libcap-dev']
       env:
         - COMPILER=g++-4.9
-        - CFLAGS="-flto"
-        - LDFLAGS="-flto"
+        - CI_CFLAGS="-flto"
+        - CI_LDFLAGS="-flto"
 
     - os: linux
       dist: trusty
@@ -23,8 +23,8 @@ matrix:
           packages: ['g++-5', 'libcap-dev']
       env:
         - COMPILER=g++-5
-        - CFLAGS="-flto"
-        - LDFLAGS="-flto"
+        - CI_CFLAGS="-flto"
+        - CI_LDFLAGS="-flto"
 
     - os: linux
       dist: trusty
@@ -35,8 +35,8 @@ matrix:
           packages: ['g++-6', 'libcap-dev']
       env:
         - COMPILER=g++-6
-        - CFLAGS="-flto"
-        - LDFLAGS="-flto"
+        - CI_CFLAGS="-flto"
+        - CI_LDFLAGS="-flto"
 
     - os: linux
       dist: trusty
@@ -47,8 +47,8 @@ matrix:
           packages: ['g++-7', 'libcap-dev']
       env:
         - COMPILER=g++-7
-        - CFLAGS="-flto"
-        - LDFLAGS="-flto"
+        - CI_CFLAGS="-flto"
+        - CI_LDFLAGS="-flto"
 
     - os: linux
       dist: trusty
@@ -59,8 +59,8 @@ matrix:
           packages: ['clang-3.9', 'libstdc++-4.9-dev', 'libcap-dev']
       env:
         - COMPILER=clang++-3.9
-        - CFLAGS=
-        - LDFLAGS=
+        - CI_CFLAGS=
+        - CI_LDFLAGS=
 
     - os: linux
       dist: trusty
@@ -71,27 +71,27 @@ matrix:
           packages: ['clang-4.0', 'libstdc++-4.9-dev', 'libcap-dev']
       env:
         - COMPILER=clang++-4.0
-        - CFLAGS=
-        - LDFLAGS=
+        - CI_CFLAGS=
+        - CI_LDFLAGS=
 
     - os: osx
       osx_image: xcode8.3
       compiler: clang
       env:
         - COMPILER=clang++
-        - CFLAGS="-flto"
-        - LDFLAGS="-flto"
+        - CI_CFLAGS="-flto"
+        - CI_LDFLAGS="-flto"
 
     - os: osx
       osx_image: xcode9
       compiler: clang
       env:
         - COMPILER=clang++
-        - CFLAGS="-flto"
-        - LDFLAGS="-flto"
+        - CI_CFLAGS="-flto"
+        - CI_LDFLAGS="-flto"
 
 git:
   submodules: true
 script:
-  - make -f Makefile.travis CXX=$COMPILER CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" DEFINES=-D__CONTINUOUS_INTEGRATION__ VERBOSE=true 
+  - make -f Makefile.travis CXX=$COMPILER CFLAGS="$CI_CFLAGS" LDFLAGS="$CI_LDFLAGS" DEFINES=-D__CONTINUOUS_INTEGRATION__ VERBOSE=true 
 
