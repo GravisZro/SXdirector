@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) noexcept
   };
   std::unordered_map<std::string, std::string> options =
   {
-    { "/Process/Executable", "process_control_unit" },
+    { "/Process/Executable", "process_control_unit.elf" },
     { "/Process/User", "unittest" },
     { "/Process/Group", "unittest" },
   };

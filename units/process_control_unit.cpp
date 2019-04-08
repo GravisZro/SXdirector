@@ -18,42 +18,45 @@
 #define UNITTEST_USERNAME  "unittest"
 #define UNITTEST_GROUPNAME UNITTEST_USERNAME
 
+#define UNIT_NAME "process_control_unit"
+
 int main(int argc, char *argv[]) noexcept
 {
   if(scfs_path == nullptr)
     reinitialize_paths();
   if(scfs_path == nullptr)
   {
-    terminal::write("FAILURE: SCFS is not mounted\n");
+    terminal::write("%s - %s: SCFS is not mounted\n", UNIT_NAME, "FAILURE");
     return EXIT_FAILURE;
   }
 
   if(posix::strcmp(posix::getgroupname(posix::getgid()), UNITTEST_GROUPNAME) && // if current groupname is NOT what we want AND
      !posix::setgid(posix::getgroupid(UNITTEST_GROUPNAME))) // unable to change group id
   {
-    terminal::write("FAILURE: Unable to change group id to '%s'\n", UNITTEST_GROUPNAME);
+    terminal::write("%s - %s: Unable to change group id to '%s'\n", UNIT_NAME, "FAILURE", UNITTEST_GROUPNAME);
     return EXIT_FAILURE;
   }
 
   if(posix::strcmp(posix::getusername(posix::getuid()), UNITTEST_USERNAME) && // if current username is NOT what we want AND
      !posix::setuid(posix::getuserid(UNITTEST_USERNAME))) // unable to change user id
   {
-    terminal::write("FAILURE: Unable to change user id to '%s'\n", UNITTEST_USERNAME);
+    terminal::write("%s - %s: Unable to change user id to '%s'\n", UNIT_NAME, "FAILURE", UNITTEST_USERNAME);
     return EXIT_FAILURE;
   }
+
+  Application app;
+  ServerSocket server;
 
   std::string base = scfs_path;
   base.append("/" UNITTEST_USERNAME "/io");
 
-  ServerSocket server;
-
   if(!server.bind(base.c_str()))
   {
-    terminal::write("FAILURE: Unable to bind test provider to '%s'\n", base.c_str());
+    terminal::write("%s - %s: Unable to bind test provider to '%s'\n", UNIT_NAME, "FAILURE", base.c_str());
     return EXIT_FAILURE;
   }
 
 
-  terminal::write("SUCCESS\n");
-  return EXIT_SUCCESS;
+  terminal::write("%s - %s\n", UNIT_NAME, "SUCCESS");
+  return app.exec();
 }
