@@ -13,6 +13,8 @@
 #include "../jobcontainer.h"
 #include "../string_helpers.h"
 
+#define UNIT_NAME "jobcontainer_unit"
+
 int main(int argc, char *argv[]) noexcept
 {
 // data
@@ -45,14 +47,30 @@ int main(int argc, char *argv[]) noexcept
 
   options["/Process/Arguments"] = arguments;
 
-  Object::connect(job.startFailure, []() noexcept { exit(EXIT_FAILURE); });
-  Object::connect(job.stopFailure , []() noexcept { exit(EXIT_FAILURE); });
+  Object::connect(job.startFailure,
+                  []() noexcept
+                  {
+                    terminal::write("%s - %s: job did not start\n", UNIT_NAME, "FAILURE");
+                    Application::quit(EXIT_FAILURE);
+                  });
+
+  Object::connect(job.stopFailure,
+                  []() noexcept
+                  {
+                    terminal::write("%s - %s: job did not stop\n", UNIT_NAME, "FAILURE");
+                    Application::quit(EXIT_FAILURE);
+                  });
 
   Object::connect(job.startSuccess,
                   [&job, &services, stop_signal_id, &exit_type]() noexcept
                   { job.stop(seconds(1), services, stop_signal_id, exit_type); });
 
-  Object::connect(job.stopSuccess, []() noexcept { Application::quit(EXIT_SUCCESS); });
+  Object::connect(job.stopSuccess,
+                  []() noexcept
+                  {
+                    terminal::write("%s - %s\n", UNIT_NAME, "SUCCESS");
+                    Application::quit(EXIT_SUCCESS);
+                  });
 
   job.start(seconds(1),
              services,
