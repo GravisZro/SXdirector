@@ -41,7 +41,7 @@ private:
   const std::unordered_map<std::string, std::string>& getConfigData(const std::string& config) const noexcept;
 
 // signals
-  signal<const std::string> runlevel_changed;
+  signal<std::string> runlevel_changed;
 
 // functions
   bool buildProcessMap(void) noexcept;
